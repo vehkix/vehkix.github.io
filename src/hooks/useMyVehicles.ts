@@ -97,18 +97,15 @@ export function useMyVehicles(session: Session | null, adminView = false) {
         if (adminView) {
           const profileResult = await client.from('profiles').select('id, username, email')
           if (profileResult.error) {
-            const usernameResult = await client.from('profiles').select('id, username')
             if (!isCurrent) return
-            if (!usernameResult.error) {
-              profiles = (usernameResult.data ?? []).map((profile) => ({ ...profile, email: null }))
-            } else {
-              setErrorState({ scopeKey: activeScopeKey, message: 'Could not load admin account summaries.' })
-              setLoadedFor(activeScopeKey)
-              return
-            }
-          } else {
-            profiles = profileResult.data ?? []
+            setErrorState({
+              scopeKey: activeScopeKey,
+              message: 'Could not load admin account summaries. Run the latest user-account setup SQL.',
+            })
+            setLoadedFor(activeScopeKey)
+            return
           }
+          profiles = profileResult.data ?? []
           if (!isCurrent) return
         }
         const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]))
