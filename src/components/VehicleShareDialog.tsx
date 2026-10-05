@@ -7,9 +7,7 @@ import type { ShareSection } from './vehicleShare'
 interface PrintDocument {
   fileName: string
   vehicleName: string
-  vehicleIdentifier: string
   printTimestamp: string | null
-  orientation: 'portrait' | 'landscape'
   sections: ShareSection[]
 }
 
@@ -40,12 +38,11 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
     useSharePreferences(userId, allFieldIds)
   const [printDocument, setPrintDocument] = useState<PrintDocument | null>(null)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
-
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     dialog.showModal()
+    dialog.scrollTop = 0
     return () => dialog.close()
   }, [])
 
@@ -53,10 +50,17 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
     if (!printDocument) return
 
     const previousTitle = document.title
-    document.title = printDocument.fileName
-    document.body.classList.add('vehicle-printing', `vehicle-printing-${printDocument.orientation}`)
+    const setPrintTitle = () => {
+      document.title = printDocument.fileName || 'Vehicle record'
+    }
+    setPrintTitle()
+    document.body.classList.add('vehicle-printing')
 
-    const finishPrint = () => onClose()
+    const finishPrint = () => {
+      document.title = previousTitle
+      onClose()
+    }
+    window.addEventListener('beforeprint', setPrintTitle)
     window.addEventListener('afterprint', finishPrint, { once: true })
 
     const print = async () => {
@@ -82,6 +86,7 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           dialogRef.current?.close()
+          setPrintTitle()
           window.print()
         })
       })
@@ -90,30 +95,22 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
     void print()
 
     return () => {
+      window.removeEventListener('beforeprint', setPrintTitle)
       window.removeEventListener('afterprint', finishPrint)
       document.body.classList.remove('vehicle-printing')
-      document.body.classList.remove(`vehicle-printing-${printDocument.orientation}`)
-      document.title = previousTitle
     }
   }, [onClose, printDocument])
 
   function handlePrint() {
     const availableFields = sections.flatMap((section) => section.fields)
     const selectedTitle = availableFields.find((field) => field.id === 'vehicle-title')
-    const selectedIdentifier = availableFields.find(
-      (field) => field.id === 'vehicle-number' && selectedFieldIds.includes(field.id),
-    ) ?? availableFields.find(
-      (field) => field.id === 'record-id' && selectedFieldIds.includes(field.id),
-    )
     const printTimestamp = selectedFieldIds.includes('print-timestamp')
       ? new Date().toISOString()
       : null
     setPrintDocument({
       fileName: getSafeFileName(fileName),
-      vehicleName: selectedTitle && selectedFieldIds.includes(selectedTitle.id) ? selectedTitle.value : '',
-      vehicleIdentifier: selectedIdentifier?.value ?? '',
+      vehicleName: selectedTitle?.value ?? fileName,
       printTimestamp,
-      orientation,
       sections: sections
         .map((section) => ({
           ...section,
@@ -164,21 +161,6 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
                   : 'Choices saved'}
             </span>
           </div>
-          <fieldset className="vehicle-share-orientation" aria-label="Print page layout">
-            <legend>Page layout</legend>
-            {(['portrait', 'landscape'] as const).map((layout) => (
-              <label key={layout}>
-                <input
-                  type="radio"
-                  name="vehicle-print-orientation"
-                  value={layout}
-                  checked={orientation === layout}
-                  onChange={() => setOrientation(layout)}
-                />
-                <span>{layout === 'portrait' ? 'Portrait' : 'Landscape'}</span>
-              </label>
-            ))}
-          </fieldset>
           {preferencesError && <p className="vehicle-share-preferences-error" role="alert">{preferencesError}</p>}
           <div className="vehicle-share-sections">
             {sections.map((section) => (
@@ -247,18 +229,23 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
             <div className="vehicle-print-logo">
               <img src={brandWordmark} alt="Vehkix" />
             </div>
-            <p>VEHICLE RECORD</p>
-            {printDocument.vehicleName && <h1>{printDocument.vehicleName}</h1>}
-            {printDocument.vehicleIdentifier && <span>{printDocument.vehicleIdentifier}</span>}
-            {printDocument.printTimestamp && (
-              <time className="vehicle-print-timestamp" dateTime={printDocument.printTimestamp}>
-                Printed {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-                  .format(new Date(printDocument.printTimestamp))}
-              </time>
-            )}
+            <div className="vehicle-print-heading">
+              {printDocument.vehicleName && <h1>{printDocument.vehicleName}</h1>}
+              {printDocument.printTimestamp && (
+                <time className="vehicle-print-timestamp" dateTime={printDocument.printTimestamp}>
+                  Printed {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                    .format(new Date(printDocument.printTimestamp))}
+                </time>
+              )}
+            </div>
           </header>
           {printDocument.sections.map((section) => (
-            <section className="vehicle-print-section" key={section.title}>
+            <section
+              className={`vehicle-print-section${section.title === 'Notes'
+                ? ' vehicle-print-notes'
+                : section.title === 'Photos' ? ' vehicle-print-photos' : ''}`}
+              key={section.title}
+            >
               <h2>{section.title}</h2>
               <dl>
                 {section.fields.map((field) => (
