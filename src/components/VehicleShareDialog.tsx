@@ -27,6 +27,7 @@ function getSafeFileName(fileName: string) {
 
 function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShareDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const previousDocumentTitle = useRef<string | null>(null)
   const allFieldIds = sections.flatMap((section) => section.fields.map((field) => field.id))
   const {
     selectedFieldIds,
@@ -49,7 +50,6 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
   useEffect(() => {
     if (!printDocument) return
 
-    const previousTitle = document.title
     const setPrintTitle = () => {
       document.title = printDocument.fileName || 'Vehicle record'
     }
@@ -57,7 +57,10 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
     document.body.classList.add('vehicle-printing')
 
     const finishPrint = () => {
-      document.title = previousTitle
+      if (previousDocumentTitle.current !== null) {
+        document.title = previousDocumentTitle.current
+        previousDocumentTitle.current = null
+      }
       onClose()
     }
     window.addEventListener('beforeprint', setPrintTitle)
@@ -98,17 +101,26 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
       window.removeEventListener('beforeprint', setPrintTitle)
       window.removeEventListener('afterprint', finishPrint)
       document.body.classList.remove('vehicle-printing')
+      if (previousDocumentTitle.current !== null) {
+        document.title = previousDocumentTitle.current
+        previousDocumentTitle.current = null
+      }
     }
   }, [onClose, printDocument])
 
   function handlePrint() {
     const availableFields = sections.flatMap((section) => section.fields)
     const selectedTitle = availableFields.find((field) => field.id === 'vehicle-title')
+    const printFileName = getSafeFileName(fileName)
+    if (previousDocumentTitle.current === null) {
+      previousDocumentTitle.current = document.title
+    }
+    document.title = printFileName
     const printTimestamp = selectedFieldIds.includes('print-timestamp')
       ? new Date().toISOString()
       : null
     setPrintDocument({
-      fileName: getSafeFileName(fileName),
+      fileName: printFileName,
       vehicleName: selectedTitle?.value ?? fileName,
       printTimestamp,
       sections: sections
