@@ -297,6 +297,16 @@ function VehicleList({
                   {detailField('insurance_taken_date', 'Policy date', formatDate(vehicle.insurance?.taken_date))}
                 </dl>
               </div>}
+              {fieldSettings.notes.show_in_details && <div className="detail-group notes-info-group">
+                <h3>Notes</h3>
+                <dl>
+                  {detailField(
+                    'notes',
+                    'Extra notes',
+                    <span className="vehicle-notes-value">{displayValue(vehicle.notes)}</span>,
+                  )}
+                </dl>
+              </div>}
               {fieldSettings.images.show_in_details && <div className="detail-group photo-info-group">
                 <h3>Photos <span>({images.length})</span></h3>
                 {images.length > 0 ? (

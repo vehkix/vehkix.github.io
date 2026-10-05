@@ -11,6 +11,7 @@ export interface Vehicle {
   engine_no?: string | null
   tax_valid_upto?: string | null
   registration_validity?: string | null
+  notes?: string | null
   service?: {
     last_service_date?: string | null
     last_service_km?: number | null
@@ -64,6 +65,7 @@ export interface VehicleDraft {
   engine_no: string
   tax_valid_upto: string
   registration_validity: string
+  notes: string
 }
 
 export interface ExistingVehicleImage {

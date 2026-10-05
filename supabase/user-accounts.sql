@@ -193,6 +193,7 @@ create table if not exists public.user_vehicles (
   next_pucc_date date,
   insurance_taken_date date,
   insurance_next_renewal_date date,
+  notes text,
   uploaded_by text,
   uploaded_date date not null default current_date,
   images text[] not null default '{}',
@@ -205,7 +206,8 @@ alter table public.user_vehicles
   add column if not exists engine_no text,
   add column if not exists tax_valid_upto date,
   add column if not exists registration_validity date,
-  add column if not exists primary_image text;
+  add column if not exists primary_image text,
+  add column if not exists notes text;
 
 create index if not exists user_vehicles_user_created_idx
   on public.user_vehicles (user_id, created_at desc);
@@ -337,7 +339,7 @@ alter table public.vehicle_field_visibility
     'last_service_date', 'last_service_km', 'next_service_date', 'next_service_km',
     'next_pucc_date', 'insurance_next_renewal_date', 'tax_valid_upto',
     'registration_validity', 'last_pucc_date', 'insurance_taken_date',
-    'rc_owner_name', 'chassis_no', 'engine_no', 'images', 'owner_username',
+    'rc_owner_name', 'chassis_no', 'engine_no', 'notes', 'images', 'owner_username',
     'print_timestamp', 'id', 'uploaded_by', 'uploaded_date'
   ));
 
@@ -362,6 +364,7 @@ values
   ('rc_owner_name', true, true, true),
   ('chassis_no', true, true, true),
   ('engine_no', true, true, true),
+  ('notes', true, true, true),
   ('images', true, true, true),
   ('owner_username', false, true, true),
   ('print_timestamp', false, false, true),

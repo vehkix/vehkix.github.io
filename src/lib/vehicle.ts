@@ -157,5 +157,6 @@ export function toVehicleDraft(vehicle: Vehicle): VehicleDraft {
     engine_no: vehicle.engine_no ?? '',
     tax_valid_upto: vehicle.tax_valid_upto ?? '',
     registration_validity: vehicle.registration_validity ?? '',
+    notes: vehicle.notes ?? '',
   }
 }

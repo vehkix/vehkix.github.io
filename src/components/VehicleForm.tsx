@@ -44,6 +44,7 @@ const emptyDraft: VehicleDraft = {
   engine_no: '',
   tax_valid_upto: '',
   registration_validity: '',
+  notes: '',
 }
 
 function VehicleForm({
@@ -274,6 +275,21 @@ function VehicleForm({
           {field('Tax valid up to', 'tax_valid_upto', 'date')}
           {field('Registration valid up to', 'registration_validity', 'date')}
         </div>
+      </fieldset>}
+
+      {fieldSettings.notes.show_in_form && <fieldset className="vehicle-fieldset">
+        <legend>Notes</legend>
+        <label className="form-field" htmlFor="vehicle-notes">
+          <span>Extra notes</span>
+          <textarea
+            id="vehicle-notes"
+            name="notes"
+            rows={5}
+            value={draft.notes}
+            onChange={(event) => updateField('notes', event.target.value)}
+            placeholder="Add service updates, replaced parts, or anything to remember for next time."
+          />
+        </label>
       </fieldset>}
 
       {fieldSettings.images.show_in_form && <div className="form-field image-upload-field">

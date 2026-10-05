@@ -52,6 +52,7 @@ function toDatabasePayload(draft: VehicleDraft, username: string | null) {
     engine_no: nullableText(draft.engine_no),
     tax_valid_upto: nullableText(draft.tax_valid_upto),
     registration_validity: nullableText(draft.registration_validity),
+    notes: nullableText(draft.notes),
     uploaded_by: username,
   }
 }

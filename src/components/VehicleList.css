@@ -564,6 +564,11 @@
   font-size: 12px;
 }
 
+.vehicle-notes-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .paperwork-info-group,
 .record-info-group,
 .photo-info-group {

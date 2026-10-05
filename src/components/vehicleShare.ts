@@ -84,6 +84,12 @@ export function createShareSections(
       ],
     },
     {
+      title: 'Notes',
+      fields: [
+        { id: 'notes', label: 'Extra notes', value: String(displayValue(vehicle.notes)) },
+      ],
+    },
+    {
       title: 'Photos',
       fields: images.map((image, index) => ({
         id: `photo-${index + 1}`,
@@ -134,6 +140,7 @@ const shareSettingKeys: Record<string, VehicleFieldKey> = {
   'rc-owner': 'rc_owner_name',
   'chassis-number': 'chassis_no',
   'engine-number': 'engine_no',
+  notes: 'notes',
   'uploaded-by': 'uploaded_by',
   'uploaded-on': 'uploaded_date',
 }
