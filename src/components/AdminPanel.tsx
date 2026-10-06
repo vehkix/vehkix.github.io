@@ -40,9 +40,9 @@ function AdminPanel({
   const [userQuery, setUserQuery] = useState('')
   const groups = [...new Set(vehicleFieldDefinitions.map((field) => field.group))]
   const surfaceOptions: { key: VehicleFieldSurface; label: string; description: string }[] = [
-    { key: 'form', label: 'Add & Edit', description: 'Choose which fields users can enter or update.' },
-    { key: 'details', label: 'Details', description: 'Choose which fields appear in vehicle cards and details.' },
-    { key: 'share', label: 'Share', description: 'Choose which fields users can include when printing.' },
+    { key: 'form', label: 'Add & Edit', description: 'Choose which fields users can enter when adding or editing a vehicle.' },
+    { key: 'details', label: 'Details', description: 'Choose which fields appear in vehicle cards and record details.' },
+    { key: 'share', label: 'Share', description: 'Choose which fields users can include when sharing or printing a vehicle record.' },
   ]
   const activeSurface = activeSection === 'form' || activeSection === 'details' || activeSection === 'share'
     ? activeSection
@@ -199,7 +199,7 @@ function AdminPanel({
                 <p className="eyebrow">FIELD VISIBILITY</p>
                 <h2 id="admin-field-settings-title">{activeSurfaceOption?.label}</h2>
               </div>
-              <p>Set which fields are available in {activeSurfaceOption?.label}.</p>
+              <p>{activeSurfaceOption?.description}</p>
             </header>
             {settingsError && <p className="admin-settings-message error-state" role="alert">{settingsError}</p>}
             {saveError && <p className="admin-settings-message error-state" role="alert">{saveError}</p>}
@@ -213,7 +213,7 @@ function AdminPanel({
                     <div className="admin-field-table" role="table" aria-label={`${group} ${activeSurface} fields`}>
                       <div className="admin-field-row admin-field-header" role="row">
                         <span role="columnheader">Field</span>
-                        <span role="columnheader">Available</span>
+                        <span role="columnheader">Shown</span>
                       </div>
                       {vehicleFieldDefinitions.filter((field) => field.group === group).map((field) => {
                         const available = activeSurface !== 'form' || field.form

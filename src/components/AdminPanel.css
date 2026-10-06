@@ -127,38 +127,44 @@
 
 .admin-field-settings {
   margin: 0;
+  padding: 0 0 8px;
 }
 
 .admin-field-settings-heading {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 22px 0 18px;
+  gap: 28px;
+  padding: 20px 0 22px;
+  border-bottom: 1px solid var(--line);
 }
 
 .admin-field-settings-heading .eyebrow {
-  margin: 0 0 7px;
+  margin: 0 0 6px;
 }
 
 .admin-field-settings-heading h2 {
   margin: 0;
   color: var(--ink);
   font-family: var(--display);
-  font-size: 21px;
+  font-size: 25px;
+  line-height: 1.15;
 }
 
 .admin-field-settings-heading > p {
-  max-width: 390px;
+  max-width: 360px;
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .admin-field-groups {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px 36px;
+  align-items: start;
+  gap: 18px;
+  padding-top: 20px;
 }
 
 .admin-field-workspace {
@@ -214,26 +220,41 @@
 
 .admin-field-group h3 {
   margin: 0;
-  padding: 10px 0;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
   font-family: var(--display);
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.admin-field-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--white);
 }
 
 .admin-field-row {
   display: grid;
-  min-height: 42px;
-  grid-template-columns: minmax(0, 1fr) 90px;
+  min-height: 48px;
+  grid-template-columns: minmax(0, 1fr) 76px;
   align-items: center;
   border-bottom: 1px solid var(--line);
 }
 
+.admin-field-row:last-child {
+  border-bottom: 0;
+}
+
 .admin-field-header {
-  min-height: 34px;
+  min-height: 38px;
+  padding-left: 16px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .admin-field-header > span:last-child {
@@ -242,14 +263,15 @@
 
 .admin-field-name {
   min-width: 0;
-  padding: 6px 8px 6px 0;
+  padding: 9px 12px 9px 16px;
   color: var(--ink);
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .admin-field-toggle {
   display: grid;
-  min-height: 40px;
+  min-height: 46px;
   place-items: center;
   cursor: pointer;
 }
@@ -409,7 +431,17 @@
   .admin-field-settings-heading {
     align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    padding: 18px 0;
+  }
+
+  .admin-field-settings-heading h2 {
+    font-size: 22px;
+  }
+
+  .admin-field-settings-heading > p {
+    max-width: none;
+    font-size: 12px;
   }
 
   .admin-field-workspace {
@@ -427,11 +459,12 @@
 
   .admin-field-groups {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 14px;
+    padding-top: 14px;
   }
 
   .admin-field-row {
-    grid-template-columns: minmax(0, 1fr) 72px;
+    grid-template-columns: minmax(0, 1fr) 64px;
   }
 
   .admin-field-tab {

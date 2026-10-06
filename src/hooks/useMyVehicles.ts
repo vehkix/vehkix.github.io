@@ -81,10 +81,41 @@ export function useMyVehicles(session: Session | null, adminView = false) {
 
     async function loadVehicles() {
       try {
-        const vehicleResult = await client
-          .from('user_vehicles')
-          .select('*')
-          .order('created_at', { ascending: false })
+        const profilesPromise = adminView
+          ? client.from('profiles').select('id, username, email').then(({ data, error }) => ({
+            profiles: data?.map((profile) => ({ ...profile, email: profile.email ?? null })) ?? [],
+            error,
+          }))
+          : client.from('profiles').select('id, username').then(({ data, error }) => ({
+            profiles: data?.map((profile) => ({ ...profile, email: null })) ?? [],
+            error,
+          }))
+        const permissionsPromise = adminView
+          ? Promise.resolve({ permissions: new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>(), error: null })
+          : client
+            .from('user_vehicle_shares')
+            .select('vehicle_id, can_share, can_edit, can_delete')
+            .eq('shared_with_user_id', activeUserId)
+            .then(({ data, error }) => {
+              const permissions = new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>()
+              for (const share of data ?? []) {
+                const current = permissions.get(share.vehicle_id)
+                permissions.set(share.vehicle_id, {
+                  canShare: current?.canShare === true || share.can_share,
+                  canEdit: current?.canEdit === true || share.can_edit,
+                  canDelete: current?.canDelete === true || share.can_delete,
+                })
+              }
+              return { permissions, error }
+            })
+        const [vehicleResult, profileResult, permissionsResult] = await Promise.all([
+          client
+            .from('user_vehicles')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          profilesPromise,
+          permissionsPromise,
+        ])
 
         if (!isCurrent) return
         if (vehicleResult.error) {
@@ -95,59 +126,27 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           setLoadedFor(activeScopeKey)
           return
         }
+        if (permissionsResult.error) {
+          setErrorState({
+            scopeKey: activeScopeKey,
+            message: 'Could not load shared vehicle permissions. Run the latest user-account setup SQL.',
+          })
+          setLoadedFor(activeScopeKey)
+          return
+        }
+        if (profileResult.error) {
+          setErrorState({
+            scopeKey: activeScopeKey,
+            message: adminView
+              ? 'Could not load admin account summaries. Run the latest user-account setup SQL.'
+              : 'Could not load vehicle owner names. Run the latest user-account setup SQL.',
+          })
+          setLoadedFor(activeScopeKey)
+          return
+        }
+        const profiles: ProfileSummary[] = profileResult.profiles
+        const sharePermissions = permissionsResult.permissions
 
-        let profiles: ProfileSummary[] = []
-        const sharePermissions = new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>()
-        if (!adminView) {
-          const accessResult = await client
-            .from('user_vehicle_shares')
-            .select('vehicle_id, can_share, can_edit, can_delete')
-            .eq('shared_with_user_id', activeUserId)
-          if (accessResult.error) {
-            if (!isCurrent) return
-            setErrorState({
-              scopeKey: activeScopeKey,
-              message: 'Could not load shared vehicle permissions. Run the latest user-account setup SQL.',
-            })
-            setLoadedFor(activeScopeKey)
-            return
-          }
-          for (const share of accessResult.data ?? []) {
-            const current = sharePermissions.get(share.vehicle_id)
-            sharePermissions.set(share.vehicle_id, {
-              canShare: current?.canShare === true || share.can_share,
-              canEdit: current?.canEdit === true || share.can_edit,
-              canDelete: current?.canDelete === true || share.can_delete,
-            })
-          }
-        }
-        if (adminView) {
-          const profileResult = await client.from('profiles').select('id, username, email')
-          if (profileResult.error) {
-            if (!isCurrent) return
-            setErrorState({
-              scopeKey: activeScopeKey,
-              message: 'Could not load admin account summaries. Run the latest user-account setup SQL.',
-            })
-            setLoadedFor(activeScopeKey)
-            return
-          }
-          profiles = profileResult.data ?? []
-          if (!isCurrent) return
-        } else {
-          const profileResult = await client.from('profiles').select('id, username')
-          if (profileResult.error) {
-            if (!isCurrent) return
-            setErrorState({
-              scopeKey: activeScopeKey,
-              message: 'Could not load vehicle owner names. Run the latest user-account setup SQL.',
-            })
-            setLoadedFor(activeScopeKey)
-            return
-          }
-          profiles = (profileResult.data ?? []).map((profile) => ({ ...profile, email: null }))
-          if (!isCurrent) return
-        }
         const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]))
         const emailById = new Map(profiles.map((profile) => [profile.id, profile.email]))
         const normalized = (vehicleResult.data ?? []).map((row) => normalizeVehicle({
@@ -158,6 +157,22 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           can_edit: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canEdit === true,
           can_delete: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canDelete === true,
         }))
+        const vehicleCounts = new Map<string, number>()
+        for (const vehicle of normalized) {
+          if (!vehicle.user_id) continue
+          vehicleCounts.set(vehicle.user_id, (vehicleCounts.get(vehicle.user_id) ?? 0) + 1)
+        }
+        setRecords(normalized)
+        setErrorState(null)
+        setUserCount(adminView ? profiles.length : null)
+        setAccounts(adminView
+          ? profiles.map((profile) => ({
+            ...profile,
+            vehicleCount: vehicleCounts.get(profile.id) ?? 0,
+          }))
+          : [])
+        setLoadedFor(activeScopeKey)
+
         const withImages = await Promise.all(normalized.map(async (vehicle) => {
           const paths = vehicle.images ?? []
           const signedImages = await signVehicleImages(paths)
@@ -171,21 +186,7 @@ export function useMyVehicles(session: Session | null, adminView = false) {
         }))
 
         if (!isCurrent) return
-        const vehicleCounts = new Map<string, number>()
-        for (const vehicle of normalized) {
-          if (!vehicle.user_id) continue
-          vehicleCounts.set(vehicle.user_id, (vehicleCounts.get(vehicle.user_id) ?? 0) + 1)
-        }
         setRecords(withImages)
-        setErrorState(null)
-        setUserCount(adminView ? profiles.length : null)
-        setAccounts(adminView
-          ? profiles.map((profile) => ({
-            ...profile,
-            vehicleCount: vehicleCounts.get(profile.id) ?? 0,
-          }))
-          : [])
-        setLoadedFor(activeScopeKey)
       } catch {
         if (!isCurrent) return
         setErrorState({ scopeKey: activeScopeKey, message: 'Could not connect to your private collection.' })
