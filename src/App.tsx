@@ -98,6 +98,7 @@ function App() {
       ) : null,
       fieldSettings.model.show_in_details ? vehicle.model : null,
       fieldSettings.company.show_in_details ? vehicle.company : null,
+      !adminView && vehicle.user_id !== session?.user.id ? vehicle.owner_username : null,
       adminView ? vehicle.owner_username : null,
       adminView ? vehicle.owner_email : null,
     ]
@@ -308,7 +309,7 @@ function App() {
 
         {session && !adminView && (
           <div className="private-toolbar">
-            <p>Only you can see the vehicles in this collection.</p>
+            <p>Your collection includes your vehicles and any shared with you.</p>
             {!showVehicleForm && (
               <button
                 className="primary-action"

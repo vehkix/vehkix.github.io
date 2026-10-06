@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import brandWordmark from '../../images/logo/vehkix-wordmark-color-transparent.png'
 import { useSharePreferences } from '../hooks/useSharePreferences'
+import VehicleAccessManager from './VehicleAccessManager'
 import type { ShareSection } from './vehicleShare'
 
 interface PrintDocument {
@@ -15,6 +16,11 @@ interface VehicleShareDialogProps {
   sections: ShareSection[]
   fileName: string
   userId: string
+  vehicleId: string
+  mode: 'share' | 'print'
+  canManageSharing: boolean
+  canGrantEdit: boolean
+  canGrantDelete: boolean
   onClose: () => void
 }
 
@@ -25,7 +31,17 @@ function getSafeFileName(fileName: string) {
     .trim() || 'Vehicle record'
 }
 
-function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShareDialogProps) {
+function VehicleShareDialog({
+  sections,
+  fileName,
+  userId,
+  vehicleId,
+  mode,
+  canManageSharing,
+  canGrantEdit,
+  canGrantDelete,
+  onClose,
+}: VehicleShareDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const previousDocumentTitle = useRef<string | null>(null)
   const allFieldIds = sections.flatMap((section) => section.fields.map((field) => field.id))
@@ -137,6 +153,10 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
   }
 
   function requestExit() {
+    if (mode === 'share') {
+      onClose()
+      return
+    }
     setShowExitConfirm(true)
   }
 
@@ -153,60 +173,77 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
       >
         <div className="vehicle-share-content">
           <header className="vehicle-share-heading">
-            <p className="eyebrow">SHARE VEHICLE</p>
-            <h2 id="vehicle-share-title">Choose details to include</h2>
-            <p>Select the information for your print-ready copy. Choose “Save as PDF” in the print dialog to save it to your device.</p>
+            <p className="eyebrow">{mode === 'share' ? 'SHARE VEHICLE' : 'PRINT VEHICLE'}</p>
+            <h2 id="vehicle-share-title">{mode === 'share' ? 'Manage vehicle access' : 'Choose details to print'}</h2>
+            <p>
+              {mode === 'share'
+                ? 'Share this vehicle with another Vehkix user. Find them by username or registered email, then choose the access to grant.'
+                : 'Choose the details for a print-ready copy. Select “Save as PDF” in the print dialog to save it to your device.'}
+            </p>
           </header>
-          <div className="vehicle-share-controls">
-            <span>{selectedFieldIds.length} of {allFieldIds.length} selected</span>
-            <button type="button" className="text-action" disabled={!preferencesLoaded} onClick={() => updateSelection(() => allFieldIds)}>
-              Select all
-            </button>
-            <button type="button" className="text-action" disabled={!preferencesLoaded} onClick={() => updateSelection(() => [])}>
-              Clear all
-            </button>
-            <span className="vehicle-share-save-status" role="status" aria-live="polite">
-              {preferencesError
-                ? 'Choices not saved'
-                : !preferencesLoaded || preferenceSaveState === 'saving'
-                  ? 'Saving choices…'
-                  : 'Choices saved'}
-            </span>
-          </div>
-          {preferencesError && <p className="vehicle-share-preferences-error" role="alert">{preferencesError}</p>}
-          <div className="vehicle-share-sections">
-            {sections.map((section) => (
-              <fieldset className="vehicle-share-section" key={section.title}>
-                <legend>{section.title}</legend>
-                {section.fields.map((field) => (
-                  <label className="vehicle-share-field" key={field.id}>
-                    <input
-                      type="checkbox"
-                      checked={selectedFieldIds.includes(field.id)}
-                      disabled={!preferencesLoaded}
-                      onChange={(event) => updateSelection((current) => event.target.checked
-                        ? current.includes(field.id) ? current : [...current, field.id]
-                        : current.filter((id) => id !== field.id))}
-                    />
-                    <span>
-                      <strong>{field.label}</strong>
-                      <small>{field.imageUrl ? 'Photo will be included' : field.value}</small>
-                    </span>
-                  </label>
+          {mode === 'share' && canManageSharing && (
+            <VehicleAccessManager
+              vehicleId={vehicleId}
+              canGrantEdit={canGrantEdit}
+              canGrantDelete={canGrantDelete}
+            />
+          )}
+          {mode === 'print' && (
+            <>
+              <div className="vehicle-share-controls">
+                <span>{selectedFieldIds.length} of {allFieldIds.length} selected</span>
+                <button type="button" className="text-action" disabled={!preferencesLoaded} onClick={() => updateSelection(() => allFieldIds)}>
+                  Select all
+                </button>
+                <button type="button" className="text-action" disabled={!preferencesLoaded} onClick={() => updateSelection(() => [])}>
+                  Clear all
+                </button>
+                <span className="vehicle-share-save-status" role="status" aria-live="polite">
+                  {preferencesError
+                    ? 'Choices not saved'
+                    : !preferencesLoaded || preferenceSaveState === 'saving'
+                      ? 'Saving choices…'
+                      : 'Choices saved'}
+                </span>
+              </div>
+              {preferencesError && <p className="vehicle-share-preferences-error" role="alert">{preferencesError}</p>}
+              <div className="vehicle-share-sections">
+                {sections.map((section) => (
+                  <fieldset className="vehicle-share-section" key={section.title}>
+                    <legend>{section.title}</legend>
+                    {section.fields.map((field) => (
+                      <label className="vehicle-share-field" key={field.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedFieldIds.includes(field.id)}
+                          disabled={!preferencesLoaded}
+                          onChange={(event) => updateSelection((current) => event.target.checked
+                            ? current.includes(field.id) ? current : [...current, field.id]
+                            : current.filter((id) => id !== field.id))}
+                        />
+                        <span>
+                          <strong>{field.label}</strong>
+                          <small>{field.imageUrl ? 'Photo will be included' : field.value}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
                 ))}
-              </fieldset>
-            ))}
-          </div>
+              </div>
+            </>
+          )}
           <footer className="vehicle-share-actions">
-            <button type="button" className="text-action" onClick={requestExit}>Cancel</button>
-            <button
-              type="button"
-              className="primary-action"
-              disabled={!preferencesLoaded || selectedFieldIds.length === 0}
-              onClick={handlePrint}
-            >
-              Print / Save PDF
-            </button>
+            <button type="button" className="text-action" onClick={requestExit}>Close</button>
+            {mode === 'print' && (
+              <button
+                type="button"
+                className="primary-action"
+                disabled={!preferencesLoaded || selectedFieldIds.length === 0}
+                onClick={handlePrint}
+              >
+                Print / Save PDF
+              </button>
+            )}
           </footer>
         </div>
         {showExitConfirm && (
@@ -218,16 +255,16 @@ function VehicleShareDialog({ sections, fileName, userId, onClose }: VehicleShar
               aria-labelledby="vehicle-share-exit-title"
               aria-describedby="vehicle-share-exit-description"
             >
-              <h3 id="vehicle-share-exit-title">Exit share screen?</h3>
+              <h3 id="vehicle-share-exit-title">Close this window?</h3>
               <p id="vehicle-share-exit-description">
-                Your selected options will be lost. Are you sure you want to exit?
+                Your current {mode === 'share' ? 'sharing' : 'print'} screen will close. Are you sure?
               </p>
               <div className="vehicle-share-exit-actions">
                 <button type="button" className="text-action" autoFocus onClick={() => setShowExitConfirm(false)}>
-                  Keep sharing
+                  Keep open
                 </button>
                 <button type="button" className="primary-action" onClick={onClose}>
-                  Exit sharing
+                  Close
                 </button>
               </div>
             </section>

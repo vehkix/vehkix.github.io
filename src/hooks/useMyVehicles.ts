@@ -8,6 +8,7 @@ import type { Vehicle, VehicleDraft } from '../types/vehicle'
 interface VehicleImage {
   path: string
   url?: string
+  error?: boolean
 }
 
 interface ProfileSummary {
@@ -19,12 +20,15 @@ interface ProfileSummary {
 async function signVehicleImages(paths: string[]): Promise<VehicleImage[]> {
   if (!supabaseClient) return []
   const client = supabaseClient
-  const results = await Promise.all(paths.map((path) =>
-    client.storage.from('user-vehicle-images').createSignedUrl(path, 60 * 60),
-  ))
-  return paths.map((path, index) => ({
-    path,
-    url: results[index].data?.signedUrl,
+  return Promise.all(paths.map(async (path) => {
+    try {
+      const { data, error } = await client.storage
+        .from('user-vehicle-images')
+        .createSignedUrl(path, 60 * 60)
+      return { path, url: data?.signedUrl, error: Boolean(error || !data?.signedUrl) }
+    } catch {
+      return { path, error: true }
+    }
   }))
 }
 
@@ -77,12 +81,10 @@ export function useMyVehicles(session: Session | null, adminView = false) {
 
     async function loadVehicles() {
       try {
-        const vehicleQuery = client.from('user_vehicles').select('*')
-        const vehicleResult = adminView
-          ? await vehicleQuery.order('created_at', { ascending: false })
-          : await vehicleQuery
-            .eq('user_id', activeUserId)
-            .order('created_at', { ascending: false })
+        const vehicleResult = await client
+          .from('user_vehicles')
+          .select('*')
+          .order('created_at', { ascending: false })
 
         if (!isCurrent) return
         if (vehicleResult.error) {
@@ -95,6 +97,30 @@ export function useMyVehicles(session: Session | null, adminView = false) {
         }
 
         let profiles: ProfileSummary[] = []
+        const sharePermissions = new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>()
+        if (!adminView) {
+          const accessResult = await client
+            .from('user_vehicle_shares')
+            .select('vehicle_id, can_share, can_edit, can_delete')
+            .eq('shared_with_user_id', activeUserId)
+          if (accessResult.error) {
+            if (!isCurrent) return
+            setErrorState({
+              scopeKey: activeScopeKey,
+              message: 'Could not load shared vehicle permissions. Run the latest user-account setup SQL.',
+            })
+            setLoadedFor(activeScopeKey)
+            return
+          }
+          for (const share of accessResult.data ?? []) {
+            const current = sharePermissions.get(share.vehicle_id)
+            sharePermissions.set(share.vehicle_id, {
+              canShare: current?.canShare === true || share.can_share,
+              canEdit: current?.canEdit === true || share.can_edit,
+              canDelete: current?.canDelete === true || share.can_delete,
+            })
+          }
+        }
         if (adminView) {
           const profileResult = await client.from('profiles').select('id, username, email')
           if (profileResult.error) {
@@ -108,6 +134,19 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           }
           profiles = profileResult.data ?? []
           if (!isCurrent) return
+        } else {
+          const profileResult = await client.from('profiles').select('id, username')
+          if (profileResult.error) {
+            if (!isCurrent) return
+            setErrorState({
+              scopeKey: activeScopeKey,
+              message: 'Could not load vehicle owner names. Run the latest user-account setup SQL.',
+            })
+            setLoadedFor(activeScopeKey)
+            return
+          }
+          profiles = (profileResult.data ?? []).map((profile) => ({ ...profile, email: null }))
+          if (!isCurrent) return
         }
         const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]))
         const emailById = new Map(profiles.map((profile) => [profile.id, profile.email]))
@@ -115,6 +154,9 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           ...(row as unknown as Vehicle),
           owner_username: usernameById.get(row.user_id) ?? row.user_id,
           owner_email: emailById.get(row.user_id) ?? null,
+          can_share: row.user_id === activeUserId || sharePermissions.get(row.id)?.canShare === true,
+          can_edit: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canEdit === true,
+          can_delete: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canDelete === true,
         }))
         const withImages = await Promise.all(normalized.map(async (vehicle) => {
           const paths = vehicle.images ?? []
@@ -123,6 +165,7 @@ export function useMyVehicles(session: Session | null, adminView = false) {
             ...vehicle,
             image_paths: paths,
             signed_images: signedImages,
+            image_access_error: signedImages.some((image) => image.error),
             images: signedImages.flatMap((image) => image.url ?? []),
           }
         }))
@@ -233,6 +276,11 @@ export function useMyVehicles(session: Session | null, adminView = false) {
       const signedImages = await signVehicleImages(imagePaths)
       const savedVehicle = normalizeVehicle({
         ...result.data,
+        owner_username: editingVehicle?.owner_username ?? session.user.user_metadata.username ?? session.user.id,
+        owner_email: editingVehicle?.owner_email ?? session.user.email ?? null,
+        can_share: editingVehicle?.can_share ?? true,
+        can_edit: editingVehicle?.can_edit ?? true,
+        can_delete: editingVehicle?.can_delete ?? true,
         image_paths: imagePaths,
         signed_images: signedImages,
         images: signedImages.flatMap((image) => image.url ?? []),
@@ -265,6 +313,14 @@ export function useMyVehicles(session: Session | null, adminView = false) {
     const client = supabaseClient
 
     try {
+      const imagePaths = vehicle.image_paths ?? []
+      if (imagePaths.length > 0) {
+        const { error: storageError } = await client.storage
+          .from('user-vehicle-images')
+          .remove(imagePaths)
+        if (storageError) return 'Could not remove this vehicle’s photos. The vehicle was not deleted.'
+      }
+
       const { error } = await client
         .from('user_vehicles')
         .delete()
@@ -274,13 +330,6 @@ export function useMyVehicles(session: Session | null, adminView = false) {
       if (error) return 'Could not delete this vehicle. Please try again.'
 
       setRecords((current) => current.filter((item) => item.id !== vehicle.id))
-      const imagePaths = vehicle.image_paths ?? []
-      if (imagePaths.length > 0) {
-        const { error: storageError } = await client.storage
-          .from('user-vehicle-images')
-          .remove(imagePaths)
-        if (storageError) return 'Vehicle deleted, but some stored images could not be removed.'
-      }
       return null
     } catch {
       return 'Could not delete this vehicle. Please try again.'

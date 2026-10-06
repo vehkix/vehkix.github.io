@@ -29,6 +29,9 @@ export interface Vehicle {
   user_id?: string
   owner_username?: string
   owner_email?: string | null
+  can_share?: boolean
+  can_edit?: boolean
+  can_delete?: boolean
   last_service_date?: string | null
   last_service_km?: number | null
   next_service_date?: string | null
@@ -41,6 +44,7 @@ export interface Vehicle {
   uploaded_date?: string | null
   images?: string[] | null
   image_paths?: string[]
+  image_access_error?: boolean
   signed_images?: ExistingVehicleImage[]
   primary_image?: string | null
 }

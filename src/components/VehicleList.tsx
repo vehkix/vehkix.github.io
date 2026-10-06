@@ -65,7 +65,7 @@ function VehicleList({
   onDelete,
 }: VehicleListProps) {
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
-  const [sharingVehicleId, setSharingVehicleId] = useState<string | null>(null)
+  const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
   const visibleDetailFields = new Set(
     Object.values(fieldSettings)
       .filter((setting) => setting.show_in_details)
@@ -184,7 +184,9 @@ function VehicleList({
                 </>
               ) : (
                 <span className="vehicle-cover-empty">
-                  {fieldSettings.images.show_in_details ? 'No image' : 'Photo hidden'}
+                  {fieldSettings.images.show_in_details
+                    ? vehicle.image_paths?.length ? 'Photos unavailable' : 'No image'
+                    : 'Photo hidden'}
                 </span>
               )}
             </div>
@@ -200,6 +202,9 @@ function VehicleList({
                 ].filter(Boolean).join(' ') || 'Vehicle details not set'}
                 {fieldSettings.year.show_in_details && vehicle.year ? <> <span>·</span> {vehicle.year}</> : null}
               </p>
+                {!showOwner && vehicle.user_id !== userId && (
+                  <span className="vehicle-owner">Shared by · {vehicle.owner_username || 'another user'}</span>
+                )}
                 {showOwner && fieldSettings.owner_username.show_in_details && (
                   <span className="vehicle-owner">Owner · {vehicle.owner_username || vehicle.user_id}</span>
                 )}
@@ -225,24 +230,25 @@ function VehicleList({
               {dueMessage && <span className={`due-countdown ${status.className}`}>{dueMessage}</span>}
             </div>
             <div className="row-actions">
-              <button className="text-action" type="button" onClick={() => setSharingVehicleId(vehicle.id)}>
-                Share
-              </button>
-              <button className="text-action" type="button" onClick={() => onEdit(vehicle)}>
-                Edit
-              </button>
-              <button
-                className="text-action delete-action"
-                type="button"
-                disabled={deleteBusy}
-                onClick={() => {
-                  if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
-                    onDelete(vehicle)
-                  }
-                }}
-              >
-                Delete
-              </button>
+              {vehicle.can_share && (
+                <button className="text-action" type="button" onClick={() => setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })}>
+                  Share
+                </button>
+              )}
+              {vehicle.can_delete && (
+                <button
+                  className="text-action delete-action"
+                  type="button"
+                  disabled={deleteBusy}
+                  onClick={() => {
+                    if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
+                      onDelete(vehicle)
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              )}
               <button
                 className="details-toggle"
                 type="button"
@@ -308,7 +314,7 @@ function VehicleList({
                 </dl>
               </div>}
               {fieldSettings.images.show_in_details && <div className="detail-group photo-info-group">
-                <h3>Photos <span>({images.length})</span></h3>
+                <h3>Photos <span>({vehicle.image_paths?.length ?? images.length})</span></h3>
                 {images.length > 0 ? (
                   <ul className="detail-image-grid">
                     {images.map((image, index) => (
@@ -320,6 +326,10 @@ function VehicleList({
                       </li>
                     ))}
                   </ul>
+                ) : vehicle.image_paths?.length ? (
+                  <p role="alert">
+                    Photos could not be loaded. Re-run the latest user-account SQL in Supabase to apply shared-photo access policies.
+                  </p>
                 ) : <p>No photos have been added.</p>}
               </div>}
               {(fieldSettings.uploaded_by.show_in_details || fieldSettings.uploaded_date.show_in_details) && <div className="detail-group record-info-group">
@@ -329,13 +339,32 @@ function VehicleList({
                   {detailField('uploaded_date', 'Uploaded on', formatDate(vehicle.uploaded_date))}
                 </dl>
               </div>}
+              <div className="vehicle-detail-actions">
+                {vehicle.can_edit && (
+                  <button className="primary-action" type="button" onClick={() => onEdit(vehicle)}>
+                    Edit vehicle
+                  </button>
+                )}
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })}
+                >
+                  Print / PDF
+                </button>
+              </div>
             </section>
-              {sharingVehicleId === vehicle.id && (
+              {vehicleDialog?.vehicleId === vehicle.id && (
                 <VehicleShareDialog
                   sections={createShareSections(vehicle, showOwner, carouselImages, fieldSettings)}
                   fileName={getVehicleName(vehicle.company, vehicle.model)}
                   userId={userId}
-                  onClose={() => setSharingVehicleId(null)}
+                  vehicleId={vehicle.id}
+                  mode={vehicleDialog.mode}
+                  canManageSharing={vehicle.can_share === true}
+                  canGrantEdit={vehicle.can_edit === true}
+                  canGrantDelete={vehicle.can_delete === true}
+                  onClose={() => setVehicleDialog(null)}
                 />
               )}
           </article>
