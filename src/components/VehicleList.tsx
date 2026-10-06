@@ -1,11 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { displayValue, formatDate, formatMileage, getDueMessage, getUpcomingDocuments, getVehicleName, getVehicleStatus } from '../lib/vehicle'
 import type { ExistingVehicleImage, Vehicle } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
 import type { AdminAccount } from '../types/admin'
-import VehicleShareDialog from './VehicleShareDialog'
 import { createShareSections } from './vehicleShare'
 import './VehicleList.css'
+
+const VehicleShareDialog = lazy(() => import('./VehicleShareDialog'))
 
 interface VehicleListProps {
   vehicles: Vehicle[]
@@ -355,17 +356,19 @@ function VehicleList({
               </div>
             </section>
               {vehicleDialog?.vehicleId === vehicle.id && (
-                <VehicleShareDialog
-                  sections={createShareSections(vehicle, showOwner, carouselImages, fieldSettings)}
-                  fileName={getVehicleName(vehicle.company, vehicle.model)}
-                  userId={userId}
-                  vehicleId={vehicle.id}
-                  mode={vehicleDialog.mode}
-                  canManageSharing={vehicle.can_share === true}
-                  canGrantEdit={vehicle.can_edit === true}
-                  canGrantDelete={vehicle.can_delete === true}
-                  onClose={() => setVehicleDialog(null)}
-                />
+                <Suspense fallback={<p className="empty-state" role="status">Loading sharing tools…</p>}>
+                  <VehicleShareDialog
+                    sections={createShareSections(vehicle, showOwner, carouselImages, fieldSettings)}
+                    fileName={getVehicleName(vehicle.company, vehicle.model)}
+                    userId={userId}
+                    vehicleId={vehicle.id}
+                    mode={vehicleDialog.mode}
+                    canManageSharing={vehicle.can_share === true}
+                    canGrantEdit={vehicle.can_edit === true}
+                    canGrantDelete={vehicle.can_delete === true}
+                    onClose={() => setVehicleDialog(null)}
+                  />
+                </Suspense>
               )}
           </article>
         )

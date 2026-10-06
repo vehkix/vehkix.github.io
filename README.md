@@ -4,6 +4,10 @@ Vehkix manages each signed-in user's private vehicle collection with React, Vite
 
 Promoted administrators can switch to an admin panel for aggregate counts and management of all user-owned vehicle records and photos. The role is checked server-side by Supabase RLS.
 
+Open the admin view by appending `#admin` to the site URL. It uses the same Supabase sign-in as the collection: only accounts granted admin access in `admin_users` can enter, and database access remains enforced by Supabase. This is not a separate client-side password or a security boundary based on the URL.
+
+The sign-in panel, admin view, vehicle list, vehicle editor, and sharing tools are loaded on demand as separate JavaScript chunks.
+
 ## Supabase setup
 
 1. Run or re-run [`supabase/user-accounts.sql`](supabase/user-accounts.sql) to add unique usernames, Auth signup handling, backfill valid Auth users and their email addresses into `profiles`, the private `user_vehicles` table with optional per-vehicle notes, RC and primary-image columns, admin-controlled vehicle field visibility, per-user print preferences, recipient-based vehicle sharing, and the private `user-vehicle-images` Storage bucket with access policies.

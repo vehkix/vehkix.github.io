@@ -1,11 +1,7 @@
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import brandMark from '../images/logo/vehkix-mark-color.png'
 import brandWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
 import { supabaseClient } from './lib/supabase'
-import AdminPanel from './components/AdminPanel'
-import AuthPanel from './components/AuthPanel'
-import VehicleForm from './components/VehicleForm'
-import VehicleList from './components/VehicleList'
 import { useAdminAccess } from './hooks/useAdminAccess'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useMyVehicles } from './hooks/useMyVehicles'
@@ -16,8 +12,15 @@ import type { AdminSection } from './types/admin'
 import type { Vehicle, VehicleDraft } from './types/vehicle'
 import './styles/page.css'
 
+const AdminPanel = lazy(() => import('./components/AdminPanel'))
+const AuthPanel = lazy(() => import('./components/AuthPanel'))
+const VehicleForm = lazy(() => import('./components/VehicleForm'))
+const VehicleList = lazy(() => import('./components/VehicleList'))
+
 function App() {
-  const [activeView, setActiveView] = useState<'collection' | 'admin'>('collection')
+  const [activeView, setActiveView] = useState<'collection' | 'admin'>(() =>
+    window.location.hash === '#admin' ? 'admin' : 'collection',
+  )
   const [query, setQuery] = useState('')
   const [showDueVehicles, setShowDueVehicles] = useState(false)
   const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null)
@@ -40,6 +43,8 @@ function App() {
     updateSetting: updateFieldSetting,
   } = useVehicleFieldSettings(session?.user.id, isAdmin)
   const adminView = activeView === 'admin' && isAdmin
+  const collectionView = activeView !== 'admin'
+    || (Boolean(session) && !adminAccessLoading && !isAdmin)
   const {
     vehicles: vehicleRecords,
     loading: myVehiclesLoading,
@@ -51,6 +56,27 @@ function App() {
     deleteVehicle,
   } = useMyVehicles(session, adminView)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    function syncViewFromHash() {
+      setActiveView(window.location.hash === '#admin' ? 'admin' : 'collection')
+    }
+
+    window.addEventListener('hashchange', syncViewFromHash)
+    return () => window.removeEventListener('hashchange', syncViewFromHash)
+  }, [])
+
+  useEffect(() => {
+    if (!authReady || !session || adminAccessLoading || isAdmin) return
+    if (window.location.hash !== '#admin') return
+
+    window.location.replace('#top')
+  }, [authReady, session, adminAccessLoading, isAdmin])
+
+  function navigateToView(view: 'collection' | 'admin') {
+    setActiveView(view)
+    window.location.hash = view === 'admin' ? 'admin' : 'top'
+  }
 
   async function handleVehicleSave(
     draft: VehicleDraft,
@@ -80,7 +106,7 @@ function App() {
     setActionError(await signOut())
     setShowVehicleForm(false)
     setEditingVehicle(null)
-    setActiveView('collection')
+    navigateToView('collection')
   }
 
   const visibleDetailFields = new Set(
@@ -147,7 +173,7 @@ function App() {
                   type="button"
                   aria-pressed={adminView}
                   onClick={() => {
-                    setActiveView(adminView ? 'collection' : 'admin')
+                    navigateToView(adminView ? 'collection' : 'admin')
                     setAdminSection('overview')
                     setQuery('')
                   }}
@@ -172,7 +198,7 @@ function App() {
                 : <img className="brand-wordmark" src={brandWordmark} alt="Vehkix" />}
             </h1>
           </div>
-          {session && !adminView && (
+          {session && collectionView && (
             <div className="summary" aria-label="Collection summary">
               <div className="summary-item">
                 <strong>{String(vehicleRecords.length).padStart(2, '0')}</strong>
@@ -193,7 +219,7 @@ function App() {
           )}
         </div>
 
-        {session && !adminView && showDueVehicles && (
+        {session && collectionView && showDueVehicles && (
           <section className="due-summary-panel" id="due-vehicle-list" aria-labelledby="due-summary-title">
             <div className="due-summary-heading">
               <h2 id="due-summary-title">Due within 10 days</h2>
@@ -240,7 +266,9 @@ function App() {
         )}
 
         {!session && authReady && supabaseClient && (
-          <AuthPanel onSubmit={submitAuth} />
+          <Suspense fallback={<p className="empty-state" role="status">Loading sign in…</p>}>
+            <AuthPanel onSubmit={submitAuth} />
+          </Suspense>
         )}
 
         {!authReady && (
@@ -256,58 +284,60 @@ function App() {
         )}
 
         {session && adminView && (
-          <AdminPanel
-            userCount={userCount}
-            vehicleCount={vehicleRecords.length}
-            dueCount={attentionCount}
-            fieldSettings={fieldSettings}
-            settingsLoading={fieldSettingsLoading}
-            settingsError={fieldSettingsError}
-            onUpdateFieldSetting={updateFieldSetting}
-            activeSection={adminSection}
-            accounts={accounts}
-            accountsLoading={myVehiclesLoading}
-            accountsError={myVehiclesError}
-            onSelectSection={(section) => { setAdminSection(section); setQuery('') }}
-          >
-            {adminSection === 'vehicles' && (
-              <>
-                <label className="search-box">
-                  <span className="search-icon" aria-hidden="true" />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search username, email, or vehicles"
-                    aria-label="Search users and vehicles"
-                  />
-                  <span className="result-count">{filteredVehicles.length} shown</span>
-                </label>
-                {myVehiclesLoading && <p className="empty-state" role="status">Loading user vehicles…</p>}
-                {myVehiclesError && <p className="empty-state error-state" role="alert">{myVehiclesError}</p>}
-                {!myVehiclesLoading && !myVehiclesError && (
-                  <VehicleList
-                    vehicles={filteredVehicles}
-                    ownerAccounts={filteredAccounts.filter((account) => account.vehicleCount > 0)}
-                    query={query}
-                    expandedVehicleId={expandedVehicleId}
-                    deleteBusy={deleteBusy}
-                    showOwner
-                    userId={session.user.id}
-                    fieldSettings={fieldSettings}
-                    onToggleExpanded={(vehicleId) => setExpandedVehicleId(
-                      expandedVehicleId === vehicleId ? null : vehicleId,
-                    )}
-                    onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
-                    onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
-                  />
-                )}
-              </>
-            )}
-          </AdminPanel>
+          <Suspense fallback={<p className="empty-state" role="status">Loading admin panel…</p>}>
+            <AdminPanel
+              userCount={userCount}
+              vehicleCount={vehicleRecords.length}
+              dueCount={attentionCount}
+              fieldSettings={fieldSettings}
+              settingsLoading={fieldSettingsLoading}
+              settingsError={fieldSettingsError}
+              onUpdateFieldSetting={updateFieldSetting}
+              activeSection={adminSection}
+              accounts={accounts}
+              accountsLoading={myVehiclesLoading}
+              accountsError={myVehiclesError}
+              onSelectSection={(section) => { setAdminSection(section); setQuery('') }}
+            >
+              {adminSection === 'vehicles' && (
+                <>
+                  <label className="search-box">
+                    <span className="search-icon" aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search username, email, or vehicles"
+                      aria-label="Search users and vehicles"
+                    />
+                    <span className="result-count">{filteredVehicles.length} shown</span>
+                  </label>
+                  {myVehiclesLoading && <p className="empty-state" role="status">Loading user vehicles…</p>}
+                  {myVehiclesError && <p className="empty-state error-state" role="alert">{myVehiclesError}</p>}
+                  {!myVehiclesLoading && !myVehiclesError && (
+                    <VehicleList
+                      vehicles={filteredVehicles}
+                      ownerAccounts={filteredAccounts.filter((account) => account.vehicleCount > 0)}
+                      query={query}
+                      expandedVehicleId={expandedVehicleId}
+                      deleteBusy={deleteBusy}
+                      showOwner
+                      userId={session.user.id}
+                      fieldSettings={fieldSettings}
+                      onToggleExpanded={(vehicleId) => setExpandedVehicleId(
+                        expandedVehicleId === vehicleId ? null : vehicleId,
+                      )}
+                      onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
+                      onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+                    />
+                  )}
+                </>
+              )}
+            </AdminPanel>
+          </Suspense>
         )}
 
-        {session && !adminView && (
+        {session && collectionView && (
           <div className="private-toolbar">
             <p>Your collection includes your vehicles and any shared with you.</p>
             {!showVehicleForm && (
@@ -322,19 +352,21 @@ function App() {
           </div>
         )}
 
-        {session && showVehicleForm && (!adminView || editingVehicle) && (
-          <VehicleForm
-            key={editingVehicle?.id ?? 'new-vehicle'}
-            initialDraft={editingVehicle ? toVehicleDraft(editingVehicle) : undefined}
-            fieldSettings={fieldSettings}
-            existingImages={editingVehicle?.signed_images ?? []}
-            initialPrimaryImagePath={editingVehicle?.primary_image}
-            onSave={handleVehicleSave}
-            onCancel={() => { setShowVehicleForm(false); setEditingVehicle(null) }}
-          />
+        {session && showVehicleForm && ((collectionView && !adminView) || editingVehicle) && (
+          <Suspense fallback={<p className="empty-state" role="status">Loading vehicle form…</p>}>
+            <VehicleForm
+              key={editingVehicle?.id ?? 'new-vehicle'}
+              initialDraft={editingVehicle ? toVehicleDraft(editingVehicle) : undefined}
+              fieldSettings={fieldSettings}
+              existingImages={editingVehicle?.signed_images ?? []}
+              initialPrimaryImagePath={editingVehicle?.primary_image}
+              onSave={handleVehicleSave}
+              onCancel={() => { setShowVehicleForm(false); setEditingVehicle(null) }}
+            />
+          </Suspense>
         )}
 
-        {session && !adminView && (
+        {session && collectionView && (
           <label className="search-box">
             <span className="search-icon" aria-hidden="true" />
             <input
@@ -348,32 +380,34 @@ function App() {
           </label>
         )}
 
-        {session && !adminView && myVehiclesLoading && (
+        {session && collectionView && myVehiclesLoading && (
           <p className="empty-state" role="status">Loading your collection…</p>
         )}
-        {(authError || profileSyncError || (session && !adminView && myVehiclesError) || (session && adminAccessError) || actionError) && (
+        {(authError || profileSyncError || (session && collectionView && myVehiclesError) || (session && adminAccessError) || actionError) && (
           <p className="empty-state error-state" role="alert">
             {authError || profileSyncError || myVehiclesError || adminAccessError || actionError}
           </p>
         )}
 
-        {session && !adminView && !myVehiclesLoading && !myVehiclesError && (
-          <VehicleList
-            vehicles={filteredVehicles}
-            query={query}
-            expandedVehicleId={expandedVehicleId}
-            deleteBusy={deleteBusy}
-            showOwner={false}
-            userId={session.user.id}
-            fieldSettings={fieldSettings}
-            onToggleExpanded={(vehicleId) => setExpandedVehicleId(
-              expandedVehicleId === vehicleId ? null : vehicleId,
-            )}
-            onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
-            onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
-          />
+        {session && collectionView && !myVehiclesLoading && !myVehiclesError && (
+          <Suspense fallback={<p className="empty-state" role="status">Loading vehicles…</p>}>
+            <VehicleList
+              vehicles={filteredVehicles}
+              query={query}
+              expandedVehicleId={expandedVehicleId}
+              deleteBusy={deleteBusy}
+              showOwner={false}
+              userId={session.user.id}
+              fieldSettings={fieldSettings}
+              onToggleExpanded={(vehicleId) => setExpandedVehicleId(
+                expandedVehicleId === vehicleId ? null : vehicleId,
+              )}
+              onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
+              onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+            />
+          </Suspense>
         )}
-        {session && !adminView && (
+        {session && collectionView && (
           <footer className="list-footer">
             <span>“The road ahead belongs to those who keep moving.”</span>
           </footer>
