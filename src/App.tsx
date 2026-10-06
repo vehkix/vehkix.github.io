@@ -557,6 +557,7 @@ function App() {
                       expandedVehicleId={expandedVehicleId}
                       deleteBusy={deleteBusy}
                       showOwner
+                      canTransferAll={isAdmin}
                       userId={session.user.id}
                       fieldSettings={fieldSettings}
                       onToggleExpanded={(vehicleId) => setExpandedVehicleId(
@@ -564,6 +565,11 @@ function App() {
                       )}
                       onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
                       onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+                      onTransferComplete={() => {
+                        setAdminRefreshToken((token) => token + 1)
+                        setShowVehicleForm(false)
+                        setEditingVehicle(null)
+                      }}
                     />
                   )}
                 </>
@@ -672,6 +678,11 @@ function App() {
                   )}
                   onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
                   onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+                  onTransferComplete={() => {
+                    setAdminRefreshToken((token) => token + 1)
+                    setShowVehicleForm(false)
+                    setEditingVehicle(null)
+                  }}
                 />
               </section>
             </div>

@@ -7,6 +7,7 @@ import { createShareSections } from './vehicleShare'
 import './VehicleList.css'
 
 const VehicleShareDialog = lazy(() => import('./VehicleShareDialog'))
+const VehicleTransferDialog = lazy(() => import('./VehicleTransferDialog'))
 
 interface VehicleListProps {
   vehicles: Vehicle[]
@@ -14,12 +15,14 @@ interface VehicleListProps {
   expandedVehicleId: string | null
   deleteBusy: boolean
   showOwner?: boolean
+  canTransferAll?: boolean
   ownerAccounts?: AdminAccount[]
   userId: string
   fieldSettings: VehicleFieldSettings
   onToggleExpanded: (vehicleId: string) => void
   onEdit: (vehicle: Vehicle) => void
   onDelete: (vehicle: Vehicle) => void
+  onTransferComplete: () => void
 }
 
 interface VehicleOwnerGroup {
@@ -58,15 +61,18 @@ function VehicleList({
   expandedVehicleId,
   deleteBusy,
   showOwner = false,
+  canTransferAll = false,
   ownerAccounts = [],
   userId,
   fieldSettings,
   onToggleExpanded,
   onEdit,
   onDelete,
+  onTransferComplete,
 }: VehicleListProps) {
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
   const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
+  const [transferVehicleId, setTransferVehicleId] = useState<string | null>(null)
   const visibleDetailFields = new Set(
     Object.values(fieldSettings)
       .filter((setting) => setting.show_in_details)
@@ -250,6 +256,15 @@ function VehicleList({
                   Delete
                 </button>
               )}
+              {(vehicle.user_id === userId || canTransferAll) && (
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setTransferVehicleId(vehicle.id)}
+                >
+                  Transfer
+                </button>
+              )}
               <button
                 className="details-toggle"
                 type="button"
@@ -367,6 +382,16 @@ function VehicleList({
                     canGrantEdit={vehicle.can_edit === true}
                     canGrantDelete={vehicle.can_delete === true}
                     onClose={() => setVehicleDialog(null)}
+                  />
+                </Suspense>
+              )}
+              {transferVehicleId === vehicle.id && (
+                <Suspense fallback={<p className="empty-state" role="status">Loading transfer form…</p>}>
+                  <VehicleTransferDialog
+                    vehicleId={vehicle.id}
+                    vehicleName={vehicleName}
+                    onClose={() => setTransferVehicleId(null)}
+                    onTransferred={onTransferComplete}
                   />
                 </Suspense>
               )}

@@ -1105,6 +1105,97 @@ $$;
 revoke all on function public.revoke_vehicle_share(uuid) from public, anon;
 grant execute on function public.revoke_vehicle_share(uuid) to authenticated;
 
+create or replace function public.transfer_vehicle_ownership(
+  target_vehicle_id uuid,
+  recipient_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  current_owner_id uuid;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select vehicle.user_id into current_owner_id
+  from public.user_vehicles as vehicle
+  where vehicle.id = target_vehicle_id
+  for update;
+
+  if not found then
+    raise exception 'Vehicle not found';
+  end if;
+
+  if current_owner_id <> (select auth.uid())
+     and not (select public.is_admin()) then
+    raise exception 'Only the vehicle owner or an admin can transfer ownership';
+  end if;
+
+  if recipient_user_id = current_owner_id then
+    raise exception 'The recipient already owns this vehicle';
+  end if;
+
+  if not exists (
+    select 1 from public.profiles as profile where profile.id = recipient_user_id
+  ) then
+    raise exception 'Recipient account not found';
+  end if;
+
+  delete from public.user_vehicle_shares
+  where vehicle_id = target_vehicle_id;
+
+  update public.user_vehicles
+  set user_id = recipient_user_id
+  where id = target_vehicle_id;
+end;
+$$;
+
+revoke all on function public.transfer_vehicle_ownership(uuid, uuid) from public, anon;
+grant execute on function public.transfer_vehicle_ownership(uuid, uuid) to authenticated;
+
+create or replace function public.resolve_vehicle_transfer_recipient(
+  target_vehicle_id uuid,
+  recipient_identifier text
+)
+returns table (user_id uuid, username text)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  current_owner_id uuid;
+begin
+  select vehicle.user_id into current_owner_id
+  from public.user_vehicles as vehicle
+  where vehicle.id = target_vehicle_id;
+
+  if not found then
+    raise exception 'Vehicle not found';
+  end if;
+
+  if current_owner_id <> (select auth.uid())
+     and not (select public.is_admin()) then
+    raise exception 'Only the vehicle owner or an admin can transfer ownership';
+  end if;
+
+  return query
+  select profile.id, profile.username
+  from public.profiles as profile
+  where (lower(profile.username) = lower(btrim(recipient_identifier))
+      or lower(profile.email) = lower(btrim(recipient_identifier)))
+    and profile.id <> current_owner_id
+  limit 1;
+end;
+$$;
+
+revoke all on function public.resolve_vehicle_transfer_recipient(uuid, text) from public, anon;
+grant execute on function public.resolve_vehicle_transfer_recipient(uuid, text) to authenticated;
+
 drop policy if exists user_vehicles_read_own on public.user_vehicles;
 drop policy if exists user_vehicles_read_shared on public.user_vehicles;
 create policy user_vehicles_read_shared

@@ -1,0 +1,59 @@
+.vehicle-transfer-dialog {
+  box-sizing: border-box;
+  width: min(440px, calc(100vw - 32px));
+  max-width: none;
+  margin: 12vh auto auto;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--muted);
+  background: var(--page);
+  box-shadow: 0 18px 60px rgb(20 27 22 / 22%);
+}
+
+.vehicle-transfer-dialog::backdrop {
+  background: rgb(20 27 22 / 55%);
+  backdrop-filter: blur(2px);
+}
+
+.vehicle-transfer-dialog > header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.vehicle-transfer-dialog > header .eyebrow {
+  margin-bottom: 8px;
+}
+
+.vehicle-transfer-dialog h2 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 20px;
+}
+
+.vehicle-transfer-dialog > header > p:last-child {
+  margin: 0;
+  font-size: 12px;
+}
+
+.vehicle-transfer-form {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+}
+
+.vehicle-transfer-warning {
+  margin: 0;
+  padding: 10px;
+  border-left: 3px solid #b48c43;
+  color: var(--ink);
+  background: #f7f4eb;
+  font-size: 11px;
+}
+
+.vehicle-transfer-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
