@@ -1,5 +1,5 @@
 git add .
-git commit -m "forgot password added"
+git commit -m "share optimized and profile features"
 git push  origin share-with-user
 npm run build
 npm run deploy

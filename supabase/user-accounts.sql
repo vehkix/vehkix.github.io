@@ -2,11 +2,13 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text not null,
   email text,
+  avatar_path text,
   created_at timestamptz not null default now(),
   constraint profiles_username_format check (username ~ '^[A-Za-z0-9_]{3,32}$')
 );
 
 alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists avatar_path text;
 
 update public.profiles as profile
 set email = auth_user.email
@@ -76,6 +78,291 @@ $$;
 
 revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
+
+create or replace function public.update_my_username(new_username text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  cleaned_username text := btrim(new_username);
+begin
+  if cleaned_username !~ '^[A-Za-z0-9_]{3,32}$' then
+    raise exception 'Username must contain 3 to 32 letters, numbers, or underscores';
+  end if;
+
+  update public.profiles
+  set username = cleaned_username
+  where id = (select auth.uid());
+
+  if not found then
+    raise exception 'Profile not found';
+  end if;
+
+  update auth.users
+  set raw_user_meta_data = jsonb_set(
+    coalesce(raw_user_meta_data, '{}'::jsonb),
+    '{username}',
+    to_jsonb(cleaned_username),
+    true
+  )
+  where id = (select auth.uid());
+end;
+$$;
+
+revoke all on function public.update_my_username(text) from public, anon;
+grant execute on function public.update_my_username(text) to authenticated;
+
+create or replace function public.update_my_avatar_path(new_avatar_path text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new_avatar_path is not null and new_avatar_path not like (select auth.uid())::text || '/%' then
+    raise exception 'Avatar path must belong to your account';
+  end if;
+
+  update public.profiles
+  set avatar_path = new_avatar_path
+  where id = (select auth.uid());
+
+  if not found then
+    raise exception 'Profile not found';
+  end if;
+end;
+$$;
+
+revoke all on function public.update_my_avatar_path(text) from public, anon;
+grant execute on function public.update_my_avatar_path(text) to authenticated;
+
+create table if not exists public.account_deletion_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete set null,
+  requested_username text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected')),
+  requested_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists account_deletion_requests_pending_user
+  on public.account_deletion_requests (user_id)
+  where status = 'pending' and user_id is not null;
+
+alter table public.account_deletion_requests enable row level security;
+revoke all on public.account_deletion_requests from anon, authenticated;
+
+create table if not exists public.app_notifications (
+  id bigint generated always as identity primary key,
+  recipient_id uuid references auth.users (id) on delete cascade,
+  kind text not null check (kind in (
+    'vehicle_share_sent', 'vehicle_share_received',
+    'vehicle_share_accepted', 'vehicle_share_rejected',
+    'account_deletion_requested', 'account_deletion_rejected'
+  )),
+  actor_id uuid references auth.users (id) on delete set null,
+  vehicle_id uuid,
+  share_id uuid,
+  deletion_request_id uuid references public.account_deletion_requests (id) on delete set null,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+create index if not exists app_notifications_recipient_created_idx
+  on public.app_notifications (recipient_id, created_at desc);
+
+alter table public.app_notifications enable row level security;
+revoke all on public.app_notifications from anon, authenticated;
+
+create or replace function public.request_account_deletion()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  requester_id uuid := (select auth.uid());
+  requester_username text;
+  request_id uuid;
+begin
+  if requester_id is null then
+    raise exception 'Sign in to request account deletion';
+  end if;
+
+  select profile.username into requester_username
+  from public.profiles as profile
+  where profile.id = requester_id;
+  if requester_username is null then
+    raise exception 'Profile not found';
+  end if;
+
+  insert into public.account_deletion_requests (user_id, requested_username)
+  values (requester_id, requester_username)
+  on conflict (user_id) where status = 'pending' and user_id is not null
+  do update set updated_at = now()
+  returning id into request_id;
+
+  insert into public.app_notifications (kind, actor_id, deletion_request_id)
+  values ('account_deletion_requested', requester_id, request_id);
+end;
+$$;
+
+revoke all on function public.request_account_deletion() from public, anon;
+grant execute on function public.request_account_deletion() to authenticated;
+
+create or replace function public.get_my_deletion_request()
+returns table (status text, requested_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select request.status, request.requested_at
+  from public.account_deletion_requests as request
+  where request.user_id = (select auth.uid())
+  order by request.requested_at desc
+  limit 1;
+$$;
+
+revoke all on function public.get_my_deletion_request() from public, anon;
+grant execute on function public.get_my_deletion_request() to authenticated;
+
+create or replace function public.list_account_deletion_requests()
+returns table (id uuid, user_id uuid, username text, requested_at timestamptz)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not (select public.is_admin()) then
+    raise exception 'Administrator access is required';
+  end if;
+
+  return query
+  select request.id, request.user_id, request.requested_username, request.requested_at
+  from public.account_deletion_requests as request
+  where request.status = 'pending'
+  order by request.requested_at;
+end;
+$$;
+
+revoke all on function public.list_account_deletion_requests() from public, anon;
+grant execute on function public.list_account_deletion_requests() to authenticated;
+
+create or replace function public.admin_delete_user(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not (select public.is_admin()) then
+    raise exception 'Administrator access is required';
+  end if;
+  if target_user_id = (select auth.uid()) then
+    raise exception 'You cannot delete your own administrator account here';
+  end if;
+  if exists (select 1 from public.admin_users where user_id = target_user_id)
+    and not exists (
+      select 1 from public.admin_users
+      where user_id <> target_user_id
+    ) then
+    raise exception 'The last administrator account cannot be deleted';
+  end if;
+
+  update public.account_deletion_requests
+  set status = 'approved', updated_at = now()
+  where user_id = target_user_id and status = 'pending';
+
+  delete from storage.objects
+  where (bucket_id = 'user-vehicle-images' or bucket_id = 'user-profile-images')
+    and name like target_user_id::text || '/%';
+
+  delete from auth.users where id = target_user_id;
+  if not found then
+    raise exception 'User account not found';
+  end if;
+end;
+$$;
+
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
+
+create or replace function public.resolve_account_deletion_request(
+  target_request_id uuid,
+  approve_request boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  request_row public.account_deletion_requests%rowtype;
+begin
+  if not (select public.is_admin()) then
+    raise exception 'Administrator access is required';
+  end if;
+
+  select * into request_row
+  from public.account_deletion_requests
+  where id = target_request_id and status = 'pending'
+  for update;
+  if not found then
+    raise exception 'Pending deletion request not found';
+  end if;
+
+  if approve_request then
+    if request_row.user_id is null or request_row.user_id = (select auth.uid()) then
+      raise exception 'This account cannot be deleted through a user request';
+    end if;
+    if exists (select 1 from public.admin_users where user_id = request_row.user_id)
+      and not exists (
+        select 1 from public.admin_users
+        where user_id <> request_row.user_id
+      ) then
+      raise exception 'The last administrator account cannot be deleted';
+    end if;
+    update public.account_deletion_requests
+    set status = 'approved', updated_at = now()
+    where id = target_request_id;
+    delete from storage.objects
+    where (bucket_id = 'user-vehicle-images' or bucket_id = 'user-profile-images')
+      and name like request_row.user_id::text || '/%';
+    delete from auth.users where id = request_row.user_id;
+  else
+    update public.account_deletion_requests
+    set status = 'rejected', updated_at = now()
+    where id = target_request_id;
+    insert into public.app_notifications (recipient_id, kind)
+    values (request_row.user_id, 'account_deletion_rejected');
+  end if;
+end;
+$$;
+
+revoke all on function public.resolve_account_deletion_request(uuid, boolean) from public, anon;
+grant execute on function public.resolve_account_deletion_request(uuid, boolean) to authenticated;
+
+create or replace function public.mark_my_notification_read(target_notification_id bigint)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.app_notifications
+  set read_at = now()
+  where id = target_notification_id
+    and (
+      recipient_id = (select auth.uid())
+      or (recipient_id is null and (select public.is_admin()))
+    );
+$$;
+
+revoke all on function public.mark_my_notification_read(bigint) from public, anon;
+grant execute on function public.mark_my_notification_read(bigint) to authenticated;
 
 drop policy if exists profiles_read_admin on public.profiles;
 create policy profiles_read_admin
@@ -199,6 +486,49 @@ create table if not exists public.user_vehicles (
   images text[] not null default '{}',
   created_at timestamptz not null default now()
 );
+
+alter table public.app_notifications
+  drop constraint if exists app_notifications_vehicle_id_fkey;
+alter table public.app_notifications
+  add constraint app_notifications_vehicle_id_fkey
+  foreign key (vehicle_id) references public.user_vehicles (id) on delete set null;
+
+create or replace function public.list_my_notifications()
+returns table (
+  id bigint,
+  kind text,
+  actor_username text,
+  vehicle_id uuid,
+  share_id uuid,
+  vehicle_label text,
+  deletion_request_id uuid,
+  created_at timestamptz,
+  read_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select notification.id, notification.kind, profile.username,
+    notification.vehicle_id, notification.share_id,
+    coalesce(nullif(btrim(concat_ws(' ', vehicle.company, vehicle.model)), ''), vehicle.vehicle_number, 'vehicle'),
+    notification.deletion_request_id, notification.created_at, notification.read_at
+  from public.app_notifications as notification
+  left join public.profiles as profile on profile.id = notification.actor_id
+  left join public.user_vehicles as vehicle on vehicle.id = notification.vehicle_id
+  where notification.recipient_id = (select auth.uid())
+     or (
+       notification.recipient_id is null
+       and notification.kind = 'account_deletion_requested'
+       and (select public.is_admin())
+     )
+  order by notification.created_at desc
+  limit 100;
+$$;
+
+revoke all on function public.list_my_notifications() from public, anon;
+grant execute on function public.list_my_notifications() to authenticated;
 
 alter table public.user_vehicles
   add column if not exists rc_owner_name text,
@@ -431,11 +761,23 @@ create table if not exists public.user_vehicle_shares (
   can_share boolean not null default false,
   can_edit boolean not null default false,
   can_delete boolean not null default false,
+  status text not null default 'pending'
+    check (status in ('pending', 'accepted', 'rejected')),
   created_at timestamptz not null default now(),
   constraint user_vehicle_shares_not_self check (shared_by <> shared_with_user_id),
   constraint user_vehicle_shares_view_required check (can_view),
   constraint user_vehicle_shares_unique_grant unique (vehicle_id, shared_by, shared_with_user_id)
 );
+
+alter table public.app_notifications
+  drop constraint if exists app_notifications_share_id_fkey;
+alter table public.app_notifications
+  add constraint app_notifications_share_id_fkey
+  foreign key (share_id) references public.user_vehicle_shares (id) on delete set null;
+
+alter table public.user_vehicle_shares
+  add column if not exists status text not null default 'accepted'
+  check (status in ('pending', 'accepted', 'rejected'));
 
 create index if not exists user_vehicle_shares_recipient_idx
   on public.user_vehicle_shares (shared_with_user_id, vehicle_id);
@@ -469,6 +811,7 @@ as $$
     from public.user_vehicle_shares as vehicle_share
     where vehicle_share.vehicle_id = target_vehicle_id
       and vehicle_share.shared_with_user_id = (select auth.uid())
+      and vehicle_share.status = 'accepted'
       and case requested_permission
         when 'view' then vehicle_share.can_view
         when 'share' then vehicle_share.can_share
@@ -483,6 +826,7 @@ as $$
           from public.user_vehicle_shares as parent_share
           where parent_share.id = vehicle_share.parent_share_id
             and parent_share.shared_with_user_id = vehicle_share.shared_by
+            and parent_share.status = 'accepted'
             and parent_share.can_share
             and case requested_permission
               when 'edit' then parent_share.can_edit
@@ -530,6 +874,7 @@ $$;
 revoke all on function public.resolve_vehicle_share_recipient(text) from public, anon;
 grant execute on function public.resolve_vehicle_share_recipient(text) to authenticated;
 
+drop function if exists public.list_my_vehicle_shares(uuid);
 create or replace function public.list_my_vehicle_shares(target_vehicle_id uuid)
 returns table (
   share_id uuid,
@@ -537,7 +882,8 @@ returns table (
   username text,
   can_share boolean,
   can_edit boolean,
-  can_delete boolean
+  can_delete boolean,
+  status text
 )
 language plpgsql
 stable
@@ -551,7 +897,8 @@ begin
 
   return query
   select vehicle_share.id, vehicle_share.shared_with_user_id, profile.username,
-    vehicle_share.can_share, vehicle_share.can_edit, vehicle_share.can_delete
+    vehicle_share.can_share, vehicle_share.can_edit, vehicle_share.can_delete,
+    vehicle_share.status
   from public.user_vehicle_shares as vehicle_share
   join public.profiles as profile on profile.id = vehicle_share.shared_with_user_id
   where vehicle_share.vehicle_id = target_vehicle_id
@@ -579,7 +926,10 @@ declare
   source_share public.user_vehicle_shares%rowtype;
   existing_share public.user_vehicle_shares%rowtype;
   new_parent_share_id uuid;
+  current_share_id uuid;
   vehicle_owner_id uuid;
+  had_existing_share boolean := false;
+  existing_share_was_accepted boolean := false;
 begin
   if recipient_user_id = (select auth.uid()) then
     raise exception 'You cannot share a vehicle with yourself';
@@ -600,6 +950,7 @@ begin
     where vehicle_share.vehicle_id = target_vehicle_id
       and vehicle_share.shared_with_user_id = (select auth.uid())
       and vehicle_share.can_share
+      and vehicle_share.status = 'accepted'
       and (not recipient_can_edit or vehicle_share.can_edit)
       and (not recipient_can_delete or vehicle_share.can_delete)
     limit 1;
@@ -626,6 +977,8 @@ begin
     and vehicle_share.shared_by = (select auth.uid())
     and vehicle_share.shared_with_user_id = recipient_user_id;
 
+  had_existing_share := found;
+  existing_share_was_accepted := found and existing_share.status = 'accepted';
   if found and (
     (existing_share.can_share and not recipient_can_share)
     or (existing_share.can_edit and not recipient_can_edit)
@@ -637,11 +990,12 @@ begin
 
   insert into public.user_vehicle_shares (
     vehicle_id, shared_by, shared_with_user_id, parent_share_id,
-    can_view, can_share, can_edit, can_delete
+    can_view, can_share, can_edit, can_delete, status
   )
   values (
     target_vehicle_id, (select auth.uid()), recipient_user_id, new_parent_share_id,
-    true, recipient_can_share, recipient_can_edit, recipient_can_delete
+    true, recipient_can_share, recipient_can_edit, recipient_can_delete,
+    case when existing_share_was_accepted then 'accepted' else 'pending' end
   )
   on conflict (vehicle_id, shared_by, shared_with_user_id)
   do update set
@@ -649,12 +1003,69 @@ begin
     can_view = true,
     can_share = excluded.can_share,
     can_edit = excluded.can_edit,
-    can_delete = excluded.can_delete;
+    can_delete = excluded.can_delete,
+    status = excluded.status
+  returning id into current_share_id;
+
+  if not had_existing_share or not existing_share_was_accepted then
+    insert into public.app_notifications (recipient_id, kind, actor_id, vehicle_id, share_id)
+    values
+      (recipient_user_id, 'vehicle_share_received', (select auth.uid()), target_vehicle_id, current_share_id),
+      ((select auth.uid()), 'vehicle_share_sent', recipient_user_id, target_vehicle_id, current_share_id);
+  end if;
 end;
 $$;
 
 revoke all on function public.grant_vehicle_share(uuid, uuid, boolean, boolean, boolean) from public, anon;
 grant execute on function public.grant_vehicle_share(uuid, uuid, boolean, boolean, boolean) to authenticated;
+
+create or replace function public.respond_to_vehicle_share(
+  target_share_id uuid,
+  accept_share boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  share_row public.user_vehicle_shares%rowtype;
+begin
+  select * into share_row
+  from public.user_vehicle_shares
+  where id = target_share_id
+    and shared_with_user_id = (select auth.uid())
+    and status = 'pending'
+  for update;
+
+  if not found then
+    raise exception 'Pending vehicle share not found';
+  end if;
+
+  update public.user_vehicle_shares
+  set status = case when accept_share then 'accepted' else 'rejected' end
+  where id = target_share_id;
+
+  update public.app_notifications
+  set read_at = now()
+  where recipient_id = (select auth.uid())
+    and kind = 'vehicle_share_received'
+    and share_id = target_share_id;
+
+  insert into public.app_notifications (recipient_id, kind, actor_id, vehicle_id, share_id)
+  values
+    (share_row.shared_by,
+      case when accept_share then 'vehicle_share_accepted' else 'vehicle_share_rejected' end,
+      (select auth.uid()), share_row.vehicle_id, target_share_id);
+
+  if not accept_share then
+    delete from public.user_vehicle_shares where id = target_share_id;
+  end if;
+end;
+$$;
+
+revoke all on function public.respond_to_vehicle_share(uuid, boolean) from public, anon;
+grant execute on function public.respond_to_vehicle_share(uuid, boolean) to authenticated;
 
 create or replace function public.revoke_vehicle_share(target_share_id uuid)
 returns void
@@ -725,7 +1136,56 @@ set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'user-profile-images',
+  'user-profile-images',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 grant select, insert, delete on storage.objects to authenticated;
+
+drop policy if exists user_profile_images_read_own on storage.objects;
+create policy user_profile_images_read_own
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'user-profile-images'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists user_profile_images_upload_own on storage.objects;
+create policy user_profile_images_upload_own
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'user-profile-images'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists user_profile_images_update_own on storage.objects;
+create policy user_profile_images_update_own
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'user-profile-images'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'user-profile-images'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists user_profile_images_delete_own on storage.objects;
+create policy user_profile_images_delete_own
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'user-profile-images'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
 
 drop policy if exists user_vehicle_images_read_own on storage.objects;
 create policy user_vehicle_images_read_own

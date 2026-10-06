@@ -364,7 +364,7 @@
 .admin-account-row {
   display: grid;
   min-height: 48px;
-  grid-template-columns: minmax(110px, 1fr) minmax(0, 1.7fr) 72px;
+  grid-template-columns: minmax(100px, 1fr) minmax(0, 1.5fr) 54px minmax(125px, auto);
   align-items: center;
   gap: 16px;
   padding: 8px 0;
@@ -394,6 +394,79 @@
 .admin-account-vehicle-count {
   color: var(--ink);
   text-align: right;
+}
+
+.admin-account-actions,
+.admin-deletion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.admin-delete-action {
+  padding: 6px 0;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-delete-action.is-danger {
+  color: #a3342e;
+}
+
+.admin-owner-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-owner-filter select {
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--white);
+  font: inherit;
+}
+
+.admin-deletion-requests {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.admin-deletion-requests li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-deletion-requests li > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-deletion-requests strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.admin-deletion-requests small {
+  color: var(--muted);
+  font-size: 10px;
 }
 
 @media (max-width: 600px) {
@@ -472,7 +545,16 @@
   }
 
   .admin-account-row {
-    grid-template-columns: minmax(82px, 0.8fr) minmax(0, 1.5fr) 48px;
+    grid-template-columns: minmax(80px, 0.8fr) minmax(0, 1fr) 40px minmax(110px, auto);
     gap: 8px;
+  }
+
+  .admin-account-actions {
+    gap: 6px;
+  }
+
+  .admin-deletion-requests li {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

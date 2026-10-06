@@ -5,7 +5,9 @@ import { supabaseClient } from './lib/supabase'
 import { useAdminAccess } from './hooks/useAdminAccess'
 import { useAuthSession } from './hooks/useAuthSession'
 import { useMyVehicles } from './hooks/useMyVehicles'
+import { useAdminUserManagement } from './hooks/useAdminUserManagement'
 import { useVehicleFieldSettings } from './hooks/useVehicleFieldSettings'
+import { getUsernameInitials } from './lib/profile'
 import { formatDate, getDueItems, getVehicleName, toVehicleDraft } from './lib/vehicle'
 import { vehicleFieldDefinitions } from './lib/vehicleSettings'
 import type { AdminSection } from './types/admin'
@@ -14,7 +16,9 @@ import './styles/page.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
+const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
+const ProfilePanel = lazy(() => import('./components/ProfilePanel'))
 const VehicleForm = lazy(() => import('./components/VehicleForm'))
 const VehicleList = lazy(() => import('./components/VehicleList'))
 
@@ -28,6 +32,12 @@ function App() {
   const [showVehicleForm, setShowVehicleForm] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
+  const [showProfile, setShowProfile] = useState(false)
+  const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
+  const [adminRefreshToken, setAdminRefreshToken] = useState(0)
+  const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
+  const [profileAvatar, setProfileAvatar] = useState<{ userId: string; url: string } | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const {
     session,
     isReady: authReady,
@@ -37,17 +47,26 @@ function App() {
     submitAuth,
     requestPasswordReset,
     updatePassword,
+    updateUsername,
     signOut,
   } = useAuthSession()
   const { isAdmin, loading: adminAccessLoading, error: adminAccessError } = useAdminAccess(session)
+  const {
+    requests: deletionRequests,
+    loading: deletionRequestsLoading,
+    error: deletionRequestsError,
+    loadRequests: loadDeletionRequests,
+    deleteAccount,
+    resolveRequest,
+  } = useAdminUserManagement(isAdmin)
   const {
     settings: fieldSettings,
     loading: fieldSettingsLoading,
     error: fieldSettingsError,
     updateSetting: updateFieldSetting,
   } = useVehicleFieldSettings(session?.user.id, isAdmin)
-  const adminView = activeView === 'admin' && isAdmin && !isPasswordRecovery
-  const collectionView = !isPasswordRecovery && (activeView !== 'admin'
+  const adminView = activeView === 'admin' && isAdmin && !isPasswordRecovery && !showProfile
+  const collectionView = !isPasswordRecovery && !showProfile && (activeView !== 'admin'
     || (Boolean(session) && !adminAccessLoading && !isAdmin))
   const {
     vehicles: vehicleRecords,
@@ -58,12 +77,50 @@ function App() {
     accounts,
     saveVehicle,
     deleteVehicle,
-  } = useMyVehicles(session, adminView)
-  const [actionError, setActionError] = useState<string | null>(null)
+  } = useMyVehicles(session, adminView, adminRefreshToken)
+
+  useEffect(() => {
+    if (!supabaseClient || !session?.user.id) return
+    const client = supabaseClient
+    const activeUserId = session.user.id
+    let current = true
+
+    void Promise.resolve(client
+      .from('profiles')
+      .select('avatar_path')
+      .eq('id', activeUserId)
+      .single())
+      .then(async ({ data, error }) => {
+        if (!current) return
+        if (error) {
+          setActionError('Could not load your profile photo. Run the latest user-account SQL setup.')
+          return
+        }
+        if (!data.avatar_path) {
+          setProfileAvatar(null)
+          return
+        }
+        const { data: signedData, error: signedError } = await client.storage
+          .from('user-profile-images')
+          .createSignedUrl(data.avatar_path, 60 * 60 * 24)
+        if (!current) return
+        if (signedError) {
+          setActionError('Could not load your profile photo from Supabase Storage.')
+          return
+        }
+        setProfileAvatar({ userId: activeUserId, url: signedData.signedUrl })
+      })
+      .catch(() => {
+        if (current) setActionError('Could not load your profile photo from Supabase.')
+      })
+
+    return () => { current = false }
+  }, [session?.user.id, profileAvatarRevision])
 
   useEffect(() => {
     function syncViewFromHash() {
       setActiveView(window.location.hash === '#admin' ? 'admin' : 'collection')
+      setShowProfile(false)
     }
 
     window.addEventListener('hashchange', syncViewFromHash)
@@ -80,6 +137,12 @@ function App() {
   function navigateToView(view: 'collection' | 'admin') {
     setActiveView(view)
     window.location.hash = view === 'admin' ? 'admin' : 'top'
+  }
+
+  function handleAdminSectionChange(section: AdminSection) {
+    setAdminSection(section)
+    setQuery('')
+    if (section === 'deletion-requests') void loadDeletionRequests()
   }
 
   async function handleVehicleSave(
@@ -108,9 +171,34 @@ function App() {
 
   async function handleSignOut() {
     setActionError(await signOut())
+    setShowProfile(false)
     setShowVehicleForm(false)
     setEditingVehicle(null)
     navigateToView('collection')
+  }
+
+  async function handleDeleteAccount(account: typeof accounts[number]) {
+    const message = await deleteAccount(account.id, account.username)
+    if (message) {
+      if (message !== 'Account deletion was cancelled.') setActionError(message)
+      return
+    }
+    if (selectedAdminOwnerId === account.id) setSelectedAdminOwnerId('')
+    setAdminRefreshToken((token) => token + 1)
+    setActionError(null)
+  }
+
+  async function handleResolveDeletionRequest(
+    request: (typeof deletionRequests)[number],
+    approve: boolean,
+  ) {
+    const message = await resolveRequest(request, approve)
+    if (message) {
+      if (message !== 'Account deletion was cancelled.') setActionError(message)
+      return
+    }
+    setAdminRefreshToken((token) => token + 1)
+    setActionError(null)
   }
 
   const visibleDetailFields = new Set(
@@ -119,6 +207,8 @@ function App() {
       .map((field) => field.key),
   )
   const filteredVehicles = vehicleRecords.filter((vehicle) =>
+    (!adminView || !selectedAdminOwnerId || vehicle.user_id === selectedAdminOwnerId)
+    &&
     [
       fieldSettings.id.show_in_details ? vehicle.id : null,
       fieldSettings.vehicle_number.show_in_details ? vehicle.vehicle_number : null,
@@ -159,7 +249,12 @@ function App() {
     <main className="page-shell">
       <header className="topbar">
         {session && (
-          <a className="wordmark" href="#top" aria-label="Vehkix home">
+          <a
+            className="wordmark"
+            href="#top"
+            aria-label="Vehkix home"
+            onClick={() => setShowProfile(false)}
+          >
             <img src={brandMark} alt="Vehkix" />
           </a>
         )}
@@ -170,13 +265,43 @@ function App() {
           </span>
           {session && (
             <>
-              <span className="account-name">{username}</span>
+              <button
+                className="profile-tab-button"
+                type="button"
+                aria-pressed={showProfile}
+                onClick={() => {
+                  setShowProfile((visible) => !visible)
+                  setShowVehicleForm(false)
+                  setEditingVehicle(null)
+                }}
+              >
+                <span className="profile-tab-avatar" aria-hidden="true">
+                  {profileAvatar?.userId === session.user.id
+                    ? <img src={profileAvatar.url} alt="" />
+                    : getUsernameInitials(username)}
+                </span>
+                <span>{showProfile ? 'Collection' : 'Profile'}</span>
+              </button>
+              <Suspense fallback={null}>
+                <NotificationBell
+                  userId={session.user.id}
+                  onOpenDeletionRequests={() => {
+                    setShowProfile(false)
+                    navigateToView('admin')
+                    handleAdminSectionChange('deletion-requests')
+                  }}
+                  onVehicleShareResponded={() => {
+                    setAdminRefreshToken((token) => token + 1)
+                  }}
+                />
+              </Suspense>
               {isAdmin && (
                 <button
                   className="text-action admin-view-toggle"
                   type="button"
                   aria-pressed={adminView}
                   onClick={() => {
+                    setShowProfile(false)
                     navigateToView(adminView ? 'collection' : 'admin')
                     setAdminSection('overview')
                     setQuery('')
@@ -196,8 +321,18 @@ function App() {
           <div>
             <h1 id="page-title">
               {session
-                ? adminView
-                  ? adminSection === 'vehicles' ? 'Vehicles' : adminSection === 'users' ? 'Users' : adminSection === 'overview' ? 'Admin panel' : 'Field visibility'
+                ? showProfile
+                  ? 'Profile'
+                  : adminView
+                  ? adminSection === 'vehicles'
+                    ? 'Vehicles'
+                    : adminSection === 'users'
+                      ? 'Users'
+                      : adminSection === 'deletion-requests'
+                        ? 'Deletion requests'
+                        : adminSection === 'overview'
+                          ? 'Admin panel'
+                          : 'Field visibility'
                   : 'My vehicles'
                 : <img className="brand-wordmark" src={brandWordmark} alt="Vehkix" />}
             </h1>
@@ -293,6 +428,17 @@ function App() {
           <p className="empty-state" role="status">Verifying admin access…</p>
         )}
 
+        {session && showProfile && (
+          <Suspense fallback={<p className="empty-state" role="status">Loading your profile…</p>}>
+            <ProfilePanel
+              userId={session.user.id}
+              initialUsername={username}
+              onUpdateUsername={updateUsername}
+              onAvatarChanged={() => setProfileAvatarRevision((revision) => revision + 1)}
+            />
+          </Suspense>
+        )}
+
         {session && adminView && (
           <Suspense fallback={<p className="empty-state" role="status">Loading admin panel…</p>}>
             <AdminPanel
@@ -307,7 +453,21 @@ function App() {
               accounts={accounts}
               accountsLoading={myVehiclesLoading}
               accountsError={myVehiclesError}
-              onSelectSection={(section) => { setAdminSection(section); setQuery('') }}
+              deletionRequests={deletionRequests}
+              deletionRequestsLoading={deletionRequestsLoading}
+              deletionRequestsError={deletionRequestsError}
+              selectedAccountId={selectedAdminOwnerId}
+              onSelectAccount={setSelectedAdminOwnerId}
+              onManageAccount={(account) => {
+                setSelectedAdminOwnerId(account.id)
+                setAdminSection('vehicles')
+                setQuery('')
+              }}
+              onDeleteAccount={(account) => { void handleDeleteAccount(account) }}
+              onResolveDeletionRequest={(request, approve) => {
+                void handleResolveDeletionRequest(request, approve)
+              }}
+              onSelectSection={handleAdminSectionChange}
             >
               {adminSection === 'vehicles' && (
                 <>

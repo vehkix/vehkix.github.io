@@ -1,0 +1,122 @@
+.profile-panel {
+  display: grid;
+  gap: 22px;
+  padding: 28px 0;
+  border-block: 1px solid var(--line);
+}
+
+.profile-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-panel-heading .eyebrow {
+  margin: 0 0 6px;
+}
+
+.profile-panel-heading h2,
+.profile-card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+}
+
+.profile-panel-heading h2 {
+  font-size: 24px;
+}
+
+.profile-avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--white);
+  background: var(--green);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-panel-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profile-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+
+.profile-card h3 {
+  font-size: 16px;
+}
+
+.profile-card p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.profile-upload {
+  position: relative;
+  width: fit-content;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.profile-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.profile-delete-card {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.profile-danger-action {
+  padding: 9px 12px;
+  border: 1px solid #a3342e;
+  border-radius: 2px;
+  color: #a3342e;
+  background: var(--white);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-danger-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 650px) {
+  .profile-panel-content {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-delete-card {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}

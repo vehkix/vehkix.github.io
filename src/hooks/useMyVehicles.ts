@@ -61,7 +61,7 @@ function toDatabasePayload(draft: VehicleDraft, username: string | null) {
   }
 }
 
-export function useMyVehicles(session: Session | null, adminView = false) {
+export function useMyVehicles(session: Session | null, adminView = false, refreshToken = 0) {
   const [records, setRecords] = useState<Vehicle[]>([])
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [errorState, setErrorState] = useState<{ scopeKey: string; message: string } | null>(null)
@@ -228,7 +228,7 @@ export function useMyVehicles(session: Session | null, adminView = false) {
     return () => {
       isCurrent = false
     }
-  }, [userId, adminView])
+  }, [userId, adminView, refreshToken])
 
   async function saveVehicle(
     draft: VehicleDraft,

@@ -8,6 +8,7 @@ interface VehicleShare {
   can_share: boolean
   can_edit: boolean
   can_delete: boolean
+  status: 'pending' | 'accepted' | 'rejected'
 }
 
 interface Recipient {
@@ -250,7 +251,11 @@ function VehicleAccessManager({ vehicleId, canGrantEdit, canGrantDelete }: Vehic
               <li key={share.share_id}>
                 <span>
                   <strong>{share.username}</strong>
-                  <small>{grants.length ? `View, ${grants.join(', ')}` : 'View only'}</small>
+                  <small>
+                    {share.status === 'pending'
+                      ? 'Waiting for them to accept'
+                      : `${grants.length ? `View, ${grants.join(', ')}` : 'View only'} · Accepted`}
+                  </small>
                 </span>
                 <div className="vehicle-access-row-actions">
                   <button className="text-action" type="button" disabled={busy} onClick={() => editShare(share)}>

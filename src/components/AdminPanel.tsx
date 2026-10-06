@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { vehicleFieldDefinitions, type VehicleFieldKey, type VehicleFieldSettings, type VehicleFieldSurface } from '../lib/vehicleSettings'
 import type { AdminSection } from '../types/admin'
 import type { AdminAccount } from '../types/admin'
+import type { AccountDeletionRequest } from '../hooks/useAdminUserManagement'
 import './AdminPanel.css'
 
 interface AdminPanelProps {
@@ -17,6 +18,14 @@ interface AdminPanelProps {
   accounts: AdminAccount[]
   accountsLoading: boolean
   accountsError: string | null
+  deletionRequests: AccountDeletionRequest[]
+  deletionRequestsLoading: boolean
+  deletionRequestsError: string | null
+  selectedAccountId: string
+  onSelectAccount: (userId: string) => void
+  onManageAccount: (account: AdminAccount) => void
+  onDeleteAccount: (account: AdminAccount) => void
+  onResolveDeletionRequest: (request: AccountDeletionRequest, approve: boolean) => void
   children?: ReactNode
 }
 
@@ -33,6 +42,14 @@ function AdminPanel({
   accounts,
   accountsLoading,
   accountsError,
+  deletionRequests,
+  deletionRequestsLoading,
+  deletionRequestsError,
+  selectedAccountId,
+  onSelectAccount,
+  onManageAccount,
+  onDeleteAccount,
+  onResolveDeletionRequest,
   children,
 }: AdminPanelProps) {
   const [savingField, setSavingField] = useState<string | null>(null)
@@ -80,6 +97,14 @@ function AdminPanel({
           onClick={() => onSelectSection('users')}
         >
           Users
+        </button>
+        <button
+          type="button"
+          className="admin-section-link"
+          aria-current={activeSection === 'deletion-requests' ? 'page' : undefined}
+          onClick={() => onSelectSection('deletion-requests')}
+        >
+          Deletion requests{deletionRequests.length > 0 ? ` (${deletionRequests.length})` : ''}
         </button>
         <button
           type="button"
@@ -139,6 +164,15 @@ function AdminPanel({
               </div>
               <span>{userCount == null ? '—' : `${userCount.toLocaleString()} accounts`}</span>
             </header>
+            <label className="admin-owner-filter">
+              <span>Manage account</span>
+              <select value={selectedAccountId} onChange={(event) => onSelectAccount(event.target.value)}>
+                <option value="">All accounts</option>
+                {accounts.map((account) => (
+                  <option value={account.id} key={account.id}>{account.username}</option>
+                ))}
+              </select>
+            </label>
             {children}
           </section>
         )}
@@ -173,6 +207,7 @@ function AdminPanel({
                     <span role="columnheader">Username</span>
                     <span role="columnheader">Email</span>
                     <span role="columnheader">Vehicles</span>
+                    <span role="columnheader">Actions</span>
                   </div>
                   {accounts
                     .filter((account) => `${account.username} ${account.email ?? ''}`.toLowerCase().includes(userQuery.trim().toLowerCase()))
@@ -181,6 +216,14 @@ function AdminPanel({
                         <span className="admin-account-username" role="rowheader">{account.username}</span>
                         <span className="admin-account-email">{account.email || 'Email unavailable'}</span>
                         <span className="admin-account-vehicle-count">{account.vehicleCount}</span>
+                        <span className="admin-account-actions">
+                          <button type="button" className="text-action" onClick={() => onManageAccount(account)}>
+                            Manage
+                          </button>
+                          <button type="button" className="admin-delete-action" onClick={() => onDeleteAccount(account)}>
+                            Delete
+                          </button>
+                        </span>
                       </div>
                     ))}
                   {accounts.length === 0 && (
@@ -188,6 +231,44 @@ function AdminPanel({
                   )}
                 </div>
               </>
+            )}
+          </section>
+        )}
+
+        {activeSection === 'deletion-requests' && (
+          <section className="admin-users-directory" aria-labelledby="admin-deletion-requests-title">
+            <header className="admin-section-heading">
+              <div>
+                <p className="eyebrow">ACCOUNT MANAGEMENT</p>
+                <h2 id="admin-deletion-requests-title">Deletion requests</h2>
+              </div>
+              <span>{deletionRequests.length} pending</span>
+            </header>
+            {deletionRequestsError ? (
+              <p className="admin-settings-message error-state" role="alert">{deletionRequestsError}</p>
+            ) : deletionRequestsLoading ? (
+              <p className="admin-settings-message" role="status">Loading deletion requests…</p>
+            ) : deletionRequests.length ? (
+              <ul className="admin-deletion-requests">
+                {deletionRequests.map((request) => (
+                  <li key={request.id}>
+                    <span>
+                      <strong>{request.username}</strong>
+                      <small>Requested {new Date(request.requested_at).toLocaleString()}</small>
+                    </span>
+                    <span className="admin-deletion-actions">
+                      <button type="button" className="admin-delete-action" onClick={() => onResolveDeletionRequest(request, false)}>
+                        Reject
+                      </button>
+                      <button type="button" className="admin-delete-action is-danger" onClick={() => onResolveDeletionRequest(request, true)}>
+                        Approve deletion
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="admin-settings-message">There are no pending account deletion requests.</p>
             )}
           </section>
         )}

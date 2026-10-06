@@ -159,6 +159,26 @@ export function useAuthSession() {
     return { kind: 'success', message: 'Your password has been updated.' }
   }
 
+  async function updateUsername(username: string): Promise<string | null> {
+    if (!supabaseClient) return 'Supabase is not configured.'
+    const { error: profileError } = await supabaseClient.rpc('update_my_username', {
+      new_username: username,
+    })
+    if (profileError) {
+      return profileError.message.includes('profiles_username_unique_ci')
+        || profileError.message.includes('duplicate key')
+        ? 'That username is already in use.'
+        : 'Could not update your username. Check the latest user-account SQL setup.'
+    }
+
+    const { error: metadataError } = await supabaseClient.auth.updateUser({
+      data: { username },
+    })
+    return metadataError
+      ? 'Username saved, but your session could not be refreshed. Please sign in again.'
+      : null
+  }
+
   const profileSyncError = profileSyncState?.userId === session?.user.id
     ? profileSyncState?.error ?? null
     : null
@@ -172,6 +192,7 @@ export function useAuthSession() {
     submitAuth,
     requestPasswordReset,
     updatePassword,
+    updateUsername,
     signOut,
   }
 }
