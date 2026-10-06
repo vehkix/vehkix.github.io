@@ -1,0 +1,6 @@
+git checkout -b share-with-user
+git add .
+git commit -m "sharing with usernames - no photos yet"
+git push  origin share-with-user
+npm run build
+npm run deploy

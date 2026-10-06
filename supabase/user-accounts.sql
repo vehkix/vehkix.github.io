@@ -725,6 +725,8 @@ set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
+grant select, insert, delete on storage.objects to authenticated;
+
 drop policy if exists user_vehicle_images_read_own on storage.objects;
 create policy user_vehicle_images_read_own
   on storage.objects
@@ -737,7 +739,10 @@ create policy user_vehicle_images_read_own
       or (select public.is_admin())
       or exists (
         select 1 from public.user_vehicles as vehicle
-        where vehicle.id::text = (storage.foldername(name))[2]
+        where (
+          vehicle.id::text = (storage.foldername(name))[2]
+          or vehicle.images @> array[storage.objects.name]::text[]
+        )
           and (select public.user_can_vehicle(vehicle.id, 'view'))
       )
     )
