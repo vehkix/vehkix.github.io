@@ -52,6 +52,54 @@
   gap: 14px;
 }
 
+.form-field > label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.auth-password-input {
+  position: relative;
+}
+
+.auth-password-input input {
+  padding-right: 42px;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover {
+  color: var(--ink);
+}
+
+.password-visibility-toggle:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}
+
+.password-visibility-toggle svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
 @media (max-width: 760px) {
   .auth-panel {
     grid-template-columns: 1fr;

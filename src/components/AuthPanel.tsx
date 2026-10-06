@@ -14,6 +14,7 @@ function AuthPanel({ onSubmit }: AuthPanelProps) {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const isSignUp = mode === 'sign-up'
@@ -79,18 +80,40 @@ function AuthPanel({ onSubmit }: AuthPanelProps) {
               placeholder="you@example.com"
             />
           </label>
-          <label className="form-field">
-            <span>Password</span>
-            <input
-              type="password"
-              autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              minLength={isSignUp ? 8 : undefined}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={isSignUp ? 'At least 8 characters' : 'Your password'}
-            />
-          </label>
+          <div className="form-field">
+            <label htmlFor="auth-password">Password</label>
+            <div className="auth-password-input">
+              <input
+                id="auth-password"
+                type={passwordVisible ? 'text' : 'password'}
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                minLength={isSignUp ? 8 : undefined}
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={isSignUp ? 'At least 8 characters' : 'Your password'}
+              />
+              <button
+                className="password-visibility-toggle"
+                type="button"
+                aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+                aria-pressed={passwordVisible}
+                onClick={() => setPasswordVisible((visible) => !visible)}
+              >
+                {passwordVisible ? (
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8" />
+                    <path d="M9.9 5.2A10.8 10.8 0 0112 5c5 0 8.5 4.5 9.5 7-.4 1-1.3 2.3-2.6 3.5M6.2 6.2C3.9 7.7 2.8 9.8 2.5 12c1 2.5 4.5 7 9.5 7 1.2 0 2.3-.3 3.3-.8" />
+                  </svg>
+                ) : (
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
           <button className="primary-action" type="submit" disabled={submitting}>
             {submitting ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
           </button>
