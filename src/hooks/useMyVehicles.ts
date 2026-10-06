@@ -81,18 +81,9 @@ export function useMyVehicles(session: Session | null, adminView = false) {
 
     async function loadVehicles() {
       try {
-        const profilesPromise = adminView
-          ? client.from('profiles').select('id, username, email').then(({ data, error }) => ({
-            profiles: data?.map((profile) => ({ ...profile, email: profile.email ?? null })) ?? [],
-            error,
-          }))
-          : client.from('profiles').select('id, username').then(({ data, error }) => ({
-            profiles: data?.map((profile) => ({ ...profile, email: null })) ?? [],
-            error,
-          }))
-        const permissionsPromise = adminView
-          ? Promise.resolve({ permissions: new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>(), error: null })
-          : client
+        const permissionsResult = adminView
+          ? { permissions: new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>(), error: null }
+          : await client
             .from('user_vehicle_shares')
             .select('vehicle_id, can_share, can_edit, can_delete')
             .eq('shared_with_user_id', activeUserId)
@@ -108,14 +99,43 @@ export function useMyVehicles(session: Session | null, adminView = false) {
               }
               return { permissions, error }
             })
-        const [vehicleResult, profileResult, permissionsResult] = await Promise.all([
-          client
+
+        if (!isCurrent) return
+        if (permissionsResult.error) {
+          setErrorState({
+            scopeKey: activeScopeKey,
+            message: 'Could not load shared vehicle permissions. Run the latest user-account setup SQL.',
+          })
+          setLoadedFor(activeScopeKey)
+          return
+        }
+        const sharePermissions = permissionsResult.permissions
+        const vehicleResult = adminView
+          ? await client
             .from('user_vehicles')
             .select('*')
-            .order('created_at', { ascending: false }),
-          profilesPromise,
-          permissionsPromise,
-        ])
+            .order('created_at', { ascending: false })
+          : await Promise.all([
+            client
+              .from('user_vehicles')
+              .select('*')
+              .eq('user_id', activeUserId)
+              .order('created_at', { ascending: false }),
+            ...(sharePermissions.size > 0
+              ? [client
+                .from('user_vehicles')
+                .select('*')
+                .in('id', [...sharePermissions.keys()])
+                .order('created_at', { ascending: false })]
+              : []),
+          ]).then((results) => ({
+            data: [...new Map(
+              results.flatMap((result) => result.data ?? []).map((row) => [row.id, row]),
+            ).values()].sort((left, right) =>
+              new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+            ),
+            error: results.find((result) => result.error)?.error ?? null,
+          }))
 
         if (!isCurrent) return
         if (vehicleResult.error) {
@@ -126,14 +146,20 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           setLoadedFor(activeScopeKey)
           return
         }
-        if (permissionsResult.error) {
-          setErrorState({
-            scopeKey: activeScopeKey,
-            message: 'Could not load shared vehicle permissions. Run the latest user-account setup SQL.',
-          })
-          setLoadedFor(activeScopeKey)
-          return
-        }
+        const visibleRows = adminView
+          ? vehicleResult.data ?? []
+          : (vehicleResult.data ?? []).filter((row) =>
+            row.user_id === activeUserId || sharePermissions.has(row.id),
+          )
+        const ownerIds = [...new Set([activeUserId, ...visibleRows.map((row) => row.user_id)])]
+        const profileResult = adminView
+          ? await client.from('profiles').select('id, username, email')
+          : await client
+            .from('profiles')
+            .select('id, username')
+            .in('id', ownerIds)
+
+        if (!isCurrent) return
         if (profileResult.error) {
           setErrorState({
             scopeKey: activeScopeKey,
@@ -144,12 +170,15 @@ export function useMyVehicles(session: Session | null, adminView = false) {
           setLoadedFor(activeScopeKey)
           return
         }
-        const profiles: ProfileSummary[] = profileResult.profiles
-        const sharePermissions = permissionsResult.permissions
+        const profiles: ProfileSummary[] = profileResult.data?.map((profile) => ({
+          id: profile.id,
+          username: profile.username,
+          email: 'email' in profile && typeof profile.email === 'string' ? profile.email : null,
+        })) ?? []
 
         const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]))
         const emailById = new Map(profiles.map((profile) => [profile.id, profile.email]))
-        const normalized = (vehicleResult.data ?? []).map((row) => normalizeVehicle({
+        const normalized = visibleRows.map((row) => normalizeVehicle({
           ...(row as unknown as Vehicle),
           owner_username: usernameById.get(row.user_id) ?? row.user_id,
           owner_email: emailById.get(row.user_id) ?? null,

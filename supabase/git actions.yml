@@ -1,6 +1,5 @@
-git checkout -b share-with-user
 git add .
-git commit -m "sharing with usernames - no photos yet"
+git commit -m "forgot password added"
 git push  origin share-with-user
 npm run build
 npm run deploy

@@ -14,6 +14,7 @@ import './styles/page.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
+const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
 const VehicleForm = lazy(() => import('./components/VehicleForm'))
 const VehicleList = lazy(() => import('./components/VehicleList'))
 
@@ -32,7 +33,10 @@ function App() {
     isReady: authReady,
     error: authError,
     profileSyncError,
+    isPasswordRecovery,
     submitAuth,
+    requestPasswordReset,
+    updatePassword,
     signOut,
   } = useAuthSession()
   const { isAdmin, loading: adminAccessLoading, error: adminAccessError } = useAdminAccess(session)
@@ -42,9 +46,9 @@ function App() {
     error: fieldSettingsError,
     updateSetting: updateFieldSetting,
   } = useVehicleFieldSettings(session?.user.id, isAdmin)
-  const adminView = activeView === 'admin' && isAdmin
-  const collectionView = activeView !== 'admin'
-    || (Boolean(session) && !adminAccessLoading && !isAdmin)
+  const adminView = activeView === 'admin' && isAdmin && !isPasswordRecovery
+  const collectionView = !isPasswordRecovery && (activeView !== 'admin'
+    || (Boolean(session) && !adminAccessLoading && !isAdmin))
   const {
     vehicles: vehicleRecords,
     loading: myVehiclesLoading,
@@ -267,7 +271,13 @@ function App() {
 
         {!session && authReady && supabaseClient && (
           <Suspense fallback={<p className="empty-state" role="status">Loading sign in…</p>}>
-            <AuthPanel onSubmit={submitAuth} />
+            <AuthPanel onSubmit={submitAuth} onForgotPassword={requestPasswordReset} />
+          </Suspense>
+        )}
+
+        {session && isPasswordRecovery && (
+          <Suspense fallback={<p className="empty-state" role="status">Loading password reset…</p>}>
+            <PasswordRecoveryPanel onUpdatePassword={updatePassword} />
           </Suspense>
         )}
 

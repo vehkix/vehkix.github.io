@@ -7,9 +7,10 @@ export type { AuthFeedback, AuthMode, AuthValues } from '../types/auth'
 
 interface AuthPanelProps {
   onSubmit: (mode: AuthMode, values: AuthValues) => Promise<AuthFeedback>
+  onForgotPassword: (email: string) => Promise<AuthFeedback>
 }
 
-function AuthPanel({ onSubmit }: AuthPanelProps) {
+function AuthPanel({ onSubmit, onForgotPassword }: AuthPanelProps) {
   const [mode, setMode] = useState<AuthMode>('sign-in')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -25,6 +26,23 @@ function AuthPanel({ onSubmit }: AuthPanelProps) {
     setFeedback(null)
     try {
       setFeedback(await onSubmit(mode, { username: username.trim(), email: email.trim(), password }))
+    } catch {
+      setFeedback({ kind: 'error', message: 'Could not connect to the account service. Try again.' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setFeedback({ kind: 'error', message: 'Enter your email address first.' })
+      return
+    }
+
+    setSubmitting(true)
+    setFeedback(null)
+    try {
+      setFeedback(await onForgotPassword(email.trim()))
     } catch {
       setFeedback({ kind: 'error', message: 'Could not connect to the account service. Try again.' })
     } finally {
@@ -114,6 +132,16 @@ function AuthPanel({ onSubmit }: AuthPanelProps) {
               </button>
             </div>
           </div>
+          {!isSignUp && (
+            <button
+              className="auth-link"
+              type="button"
+              disabled={submitting}
+              onClick={() => { void handleForgotPassword() }}
+            >
+              Forgot password?
+            </button>
+          )}
           <button className="primary-action" type="submit" disabled={submitting}>
             {submitting ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
           </button>

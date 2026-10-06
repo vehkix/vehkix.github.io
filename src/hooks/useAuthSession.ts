@@ -6,6 +6,7 @@ import type { AuthFeedback, AuthMode, AuthValues } from '../types/auth'
 export function useAuthSession() {
   const [session, setSession] = useState<Session | null>(null)
   const [isReady, setIsReady] = useState(!supabaseClient)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [profileSyncState, setProfileSyncState] = useState<{ userId: string; error: string } | null>(null)
 
@@ -13,17 +14,28 @@ export function useAuthSession() {
     if (!supabaseClient) return
 
     let isCurrent = true
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, nextSession) => {
       if (!isCurrent) return
       setSession(nextSession)
+      if (event === 'PASSWORD_RECOVERY' || (
+        window.location.search.includes('password-reset=1') && nextSession
+      )) {
+        setIsPasswordRecovery(true)
+      }
       setIsReady(true)
-      if (!nextSession) setError(null)
+      if (!nextSession) {
+        setError(null)
+        setIsPasswordRecovery(false)
+      }
     })
 
     supabaseClient.auth.getSession().then(({ data, error: sessionError }) => {
       if (!isCurrent) return
       if (sessionError) setError('Could not restore your session. Please sign in again.')
       setSession(data.session)
+      if (data.session && window.location.search.includes('password-reset=1')) {
+        setIsPasswordRecovery(true)
+      }
       setIsReady(true)
     }).catch(() => {
       if (isCurrent) {
@@ -117,9 +129,49 @@ export function useAuthSession() {
     return signOutError ? 'Could not sign out. Please try again.' : null
   }
 
+  async function requestPasswordReset(email: string): Promise<AuthFeedback> {
+    if (!supabaseClient) {
+      return { kind: 'error', message: 'Supabase is not configured.' }
+    }
+
+    const redirectTo = new URL(window.location.pathname, window.location.origin)
+    redirectTo.searchParams.set('password-reset', '1')
+    const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo.toString(),
+    })
+    return resetError
+      ? { kind: 'error', message: 'Could not send a password reset email. Try again.' }
+      : { kind: 'success', message: 'If an account uses that email, a password reset link has been sent.' }
+  }
+
+  async function updatePassword(password: string): Promise<AuthFeedback> {
+    if (!supabaseClient) {
+      return { kind: 'error', message: 'Supabase is not configured.' }
+    }
+
+    const { error: updateError } = await supabaseClient.auth.updateUser({ password })
+    if (updateError) {
+      return { kind: 'error', message: 'Could not update your password. Request a new reset link and try again.' }
+    }
+
+    setIsPasswordRecovery(false)
+    window.history.replaceState(null, '', `${window.location.pathname}#top`)
+    return { kind: 'success', message: 'Your password has been updated.' }
+  }
+
   const profileSyncError = profileSyncState?.userId === session?.user.id
     ? profileSyncState?.error ?? null
     : null
 
-  return { session, isReady, error, profileSyncError, submitAuth, signOut }
+  return {
+    session,
+    isReady,
+    error,
+    profileSyncError,
+    isPasswordRecovery,
+    submitAuth,
+    requestPasswordReset,
+    updatePassword,
+    signOut,
+  }
 }
