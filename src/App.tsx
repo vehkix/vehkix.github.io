@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import brandMark from '../images/logo/vehkix-mark-color.png'
 import brandWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
 import { supabaseClient } from './lib/supabase'
@@ -29,10 +29,16 @@ function App() {
   const [query, setQuery] = useState('')
   const [showDueVehicles, setShowDueVehicles] = useState(false)
   const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null)
+  const [collectionSectionPreference, setCollectionSectionPreference] = useState<{
+    userId: string
+    section: 'own' | 'shared'
+  } | null>(null)
   const [showVehicleForm, setShowVehicleForm] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
   const [showProfile, setShowProfile] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
   const [adminRefreshToken, setAdminRefreshToken] = useState(0)
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
@@ -227,6 +233,20 @@ function App() {
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   )
+  const ownVehicles = vehicleRecords.filter((vehicle) => vehicle.user_id === session?.user.id)
+  const sharedVehicles = vehicleRecords.filter((vehicle) => vehicle.user_id !== session?.user.id)
+  const filteredOwnVehicles = filteredVehicles.filter((vehicle) => vehicle.user_id === session?.user.id)
+  const filteredSharedVehicles = filteredVehicles.filter((vehicle) => vehicle.user_id !== session?.user.id)
+  const activeCollectionSection = collectionSectionPreference
+    && collectionSectionPreference.userId === session?.user.id
+    && (collectionSectionPreference.section === 'own' || sharedVehicles.length > 0)
+    ? collectionSectionPreference.section
+    : ownVehicles.length === 0 && sharedVehicles.length > 0
+      ? 'shared'
+      : 'own'
+  const displayedCollectionVehicles = activeCollectionSection === 'own'
+    ? filteredOwnVehicles
+    : filteredSharedVehicles
   const matchingOwnerIds = new Set(filteredVehicles.map((vehicle) => vehicle.user_id).filter(Boolean))
   const searchTerm = query.trim().toLowerCase()
   const filteredAccounts = accounts.filter((account) => (
@@ -242,21 +262,37 @@ function App() {
     }))
     .filter(({ items }) => items.length > 0)
   const attentionCount = dueVehicles.length
+
+
   const username = session?.user.user_metadata.username || session?.user.email || ''
   const connectionState = !supabaseClient ? 'error' : !authReady ? 'connecting' : 'live'
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
+        setProfileMenuOpen(false)
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setProfileMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [profileMenuOpen])
 
   return (
     <main className="page-shell">
       <header className="topbar">
         {session && (
-          <a
-            className="wordmark"
-            href="#top"
-            aria-label="Vehkix home"
-            onClick={() => setShowProfile(false)}
-          >
-            <img src={brandMark} alt="Vehkix" />
-          </a>
+          <span className="wordmark"><img src={brandMark} alt="Vehkix" /></span>
         )}
         <div className="topbar-actions">
           <span className="data-status" data-state={connectionState}>
@@ -265,23 +301,6 @@ function App() {
           </span>
           {session && (
             <>
-              <button
-                className="profile-tab-button"
-                type="button"
-                aria-pressed={showProfile}
-                onClick={() => {
-                  setShowProfile((visible) => !visible)
-                  setShowVehicleForm(false)
-                  setEditingVehicle(null)
-                }}
-              >
-                <span className="profile-tab-avatar" aria-hidden="true">
-                  {profileAvatar?.userId === session.user.id
-                    ? <img src={profileAvatar.url} alt="" />
-                    : getUsernameInitials(username)}
-                </span>
-                <span>{showProfile ? 'Collection' : 'Profile'}</span>
-              </button>
               <Suspense fallback={null}>
                 <NotificationBell
                   userId={session.user.id}
@@ -310,7 +329,53 @@ function App() {
                   {adminView ? 'My collection' : 'Admin panel'}
                 </button>
               )}
-              <button className="text-action" type="button" onClick={handleSignOut}>Log out</button>
+              {showProfile && (
+                <button className="topbar-home-button" type="button" onClick={() => setShowProfile(false)}>
+                  Home
+                </button>
+              )}
+              <div className="profile-menu" ref={profileMenuRef}>
+                <button
+                  className="profile-menu-trigger"
+                  type="button"
+                  aria-label="Open profile menu"
+                  aria-expanded={profileMenuOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setProfileMenuOpen((open) => !open)}
+                >
+                  <span className="profile-tab-avatar" aria-hidden="true">
+                    {profileAvatar?.userId === session.user.id
+                      ? <img src={profileAvatar.url} alt="" />
+                      : getUsernameInitials(username)}
+                  </span>
+                </button>
+                {profileMenuOpen && (
+                  <div className="profile-menu-popover" role="menu" aria-label="Profile options">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowProfile(true)
+                        setShowVehicleForm(false)
+                        setEditingVehicle(null)
+                        setProfileMenuOpen(false)
+                      }}
+                    >
+                      Profile
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileMenuOpen(false)
+                        void handleSignOut()
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -561,20 +626,55 @@ function App() {
 
         {session && collectionView && !myVehiclesLoading && !myVehiclesError && (
           <Suspense fallback={<p className="empty-state" role="status">Loading vehicles…</p>}>
-            <VehicleList
-              vehicles={filteredVehicles}
-              query={query}
-              expandedVehicleId={expandedVehicleId}
-              deleteBusy={deleteBusy}
-              showOwner={false}
-              userId={session.user.id}
-              fieldSettings={fieldSettings}
-              onToggleExpanded={(vehicleId) => setExpandedVehicleId(
-                expandedVehicleId === vehicleId ? null : vehicleId,
-              )}
-              onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
-              onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
-            />
+            <div className="collection-sections">
+              <nav className="collection-section-switcher" aria-label="Vehicle collections">
+                <button
+                  className="collection-section-option"
+                  type="button"
+                  aria-pressed={activeCollectionSection === 'own'}
+                  onClick={() => setCollectionSectionPreference({
+                    userId: session.user.id,
+                    section: 'own',
+                  })}
+                >
+                  <span>My vehicles</span>
+                  <span className="collection-section-count">{ownVehicles.length}</span>
+                </button>
+                {sharedVehicles.length > 0 && (
+                  <button
+                    className="collection-section-option"
+                    type="button"
+                    aria-pressed={activeCollectionSection === 'shared'}
+                    onClick={() => setCollectionSectionPreference({
+                      userId: session.user.id,
+                      section: 'shared',
+                    })}
+                  >
+                    <span>Shared with me</span>
+                    <span className="collection-section-count">{sharedVehicles.length}</span>
+                  </button>
+                )}
+              </nav>
+              <section
+                className="collection-section-content"
+                aria-label={activeCollectionSection === 'own' ? 'My vehicles' : 'Shared with me'}
+              >
+                <VehicleList
+                  vehicles={displayedCollectionVehicles}
+                  query={query}
+                  expandedVehicleId={expandedVehicleId}
+                  deleteBusy={deleteBusy}
+                  showOwner={false}
+                  userId={session.user.id}
+                  fieldSettings={fieldSettings}
+                  onToggleExpanded={(vehicleId) => setExpandedVehicleId(
+                    expandedVehicleId === vehicleId ? null : vehicleId,
+                  )}
+                  onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
+                  onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+                />
+              </section>
+            </div>
           </Suspense>
         )}
         {session && collectionView && (

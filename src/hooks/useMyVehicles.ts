@@ -87,6 +87,7 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
             .from('user_vehicle_shares')
             .select('vehicle_id, can_share, can_edit, can_delete')
             .eq('shared_with_user_id', activeUserId)
+            .eq('status', 'accepted')
             .then(({ data, error }) => {
               const permissions = new Map<string, { canShare: boolean; canEdit: boolean; canDelete: boolean }>()
               for (const share of data ?? []) {

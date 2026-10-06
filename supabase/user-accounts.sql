@@ -364,6 +364,24 @@ $$;
 revoke all on function public.mark_my_notification_read(bigint) from public, anon;
 grant execute on function public.mark_my_notification_read(bigint) to authenticated;
 
+create or replace function public.clear_my_notifications()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.app_notifications
+  where recipient_id = (select auth.uid())
+     or (
+       recipient_id is null
+       and kind = 'account_deletion_requested'
+       and (select public.is_admin())
+     );
+$$;
+
+revoke all on function public.clear_my_notifications() from public, anon;
+grant execute on function public.clear_my_notifications() to authenticated;
+
 drop policy if exists profiles_read_admin on public.profiles;
 create policy profiles_read_admin
   on public.profiles

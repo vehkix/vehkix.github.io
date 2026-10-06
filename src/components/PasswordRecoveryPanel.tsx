@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { AuthFeedback } from '../types/auth'
 import '../styles/forms.css'
 import './AuthPanel.css'
+import PasswordInput from './PasswordInput'
 
 interface PasswordRecoveryPanelProps {
   onUpdatePassword: (password: string) => Promise<AuthFeedback>
@@ -41,8 +42,7 @@ function PasswordRecoveryPanel({ onUpdatePassword }: PasswordRecoveryPanelProps)
         <form className="stacked-form" onSubmit={handleSubmit}>
           <label className="form-field">
             <span>New password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               minLength={8}
               required
@@ -53,8 +53,7 @@ function PasswordRecoveryPanel({ onUpdatePassword }: PasswordRecoveryPanelProps)
           </label>
           <label className="form-field">
             <span>Confirm new password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               minLength={8}
               required

@@ -3,6 +3,7 @@ import { supabaseClient } from '../lib/supabase'
 import { getUsernameInitials } from '../lib/profile'
 import '../styles/forms.css'
 import './ProfilePanel.css'
+import PasswordInput from './PasswordInput'
 
 interface ProfilePanelProps {
   userId: string
@@ -176,6 +177,46 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
     }
   }
 
+  async function removeAvatar() {
+    if (!supabaseClient || !avatarPath) return
+
+    setBusy(true)
+    setError(null)
+    setMessage(null)
+    const client = supabaseClient
+    try {
+      const { error: updateError } = await client.rpc('update_my_avatar_path', {
+        new_avatar_path: null,
+      })
+      if (updateError) {
+        setError('Could not remove your profile photo. Try again.')
+        return
+      }
+
+      const previousAvatarPath = avatarPath
+      setAvatarPath(null)
+      setAvatar(null)
+      onAvatarChanged()
+
+      try {
+        const { error: removeError } = await client.storage
+          .from('user-profile-images')
+          .remove([previousAvatarPath])
+        if (removeError) {
+          setError('Your profile photo was removed, but its stored image could not be deleted.')
+        } else {
+          setMessage('Profile photo removed.')
+        }
+      } catch {
+        setError('Your profile photo was removed, but its stored image could not be deleted.')
+      }
+    } catch {
+      setError('Could not connect to the account service. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function requestDeletion() {
     if (!supabaseClient || !window.confirm('Send an account deletion request to the administrators? Your account will remain active until they approve it.')) return
     setBusy(true)
@@ -232,6 +273,16 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
               }}
             />
           </label>
+          {avatarPath && (
+            <button
+              className="profile-remove-photo"
+              type="button"
+              disabled={busy}
+              onClick={() => { void removeAvatar() }}
+            >
+              Remove photo
+            </button>
+          )}
         </section>
 
         <form className="profile-card stacked-form" onSubmit={(event) => void saveUsername(event)}>
@@ -258,8 +309,7 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
           <h3>Password</h3>
           <label className="form-field">
             <span>New password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               minLength={8}
               required
@@ -270,8 +320,7 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
           </label>
           <label className="form-field">
             <span>Confirm new password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               minLength={8}
               required

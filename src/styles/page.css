@@ -4,6 +4,8 @@
 }
 
 .topbar {
+  position: relative;
+  z-index: 20;
   height: 76px;
   display: flex;
   align-items: center;
@@ -82,16 +84,11 @@
   gap: 20px;
 }
 
-.account-name {
-  color: var(--ink);
-  font-size: 12px;
-}
-
-.profile-tab-button {
+.topbar-home-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0;
+  padding: 8px 0;
   border: 0;
   color: var(--green);
   background: transparent;
@@ -99,6 +96,61 @@
   font: inherit;
   font-size: 12px;
   font-weight: 600;
+}
+
+.account-name {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.profile-menu {
+  position: relative;
+}
+
+.profile-menu-trigger {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.profile-menu-trigger:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.profile-menu-popover {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 150px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  box-shadow: 0 12px 32px rgb(32 37 31 / 14%);
+}
+
+.profile-menu-popover button {
+  padding: 10px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.profile-menu-popover button:hover,
+.profile-menu-popover button:focus-visible {
+  background: #f3f5f0;
 }
 
 .profile-tab-avatar {
@@ -119,10 +171,6 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-}
-
-.profile-tab-button[aria-pressed='true'] .profile-tab-avatar {
-  outline: 2px solid rgb(42 91 67 / 18%);
 }
 
 .text-action {
@@ -342,6 +390,67 @@ h1 {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+.collection-sections {
+  display: grid;
+  gap: 0;
+}
+
+.collection-section-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.collection-section-option {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.collection-section-option[aria-pressed='true'] {
+  border-bottom-color: var(--green);
+  color: var(--green);
+}
+
+.collection-section-option:hover {
+  color: var(--green);
+}
+
+.collection-section-option:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -3px;
+}
+
+.collection-section-count {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 12px;
+  color: inherit;
+  background: #edf2e9;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.collection-section-content {
+  min-width: 0;
 }
 
 .search-box {

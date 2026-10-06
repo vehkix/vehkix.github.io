@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabaseClient } from '../lib/supabase'
 import './NotificationBell.css'
 
@@ -35,10 +35,12 @@ function getNotificationMessage(notification: AppNotification) {
 }
 
 function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareResponded }: NotificationBellProps) {
+  const menuRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [clearing, setClearing] = useState(false)
 
   const loadNotifications = useCallback(async (): Promise<AppNotification[]> => {
     if (!supabaseClient) return []
@@ -66,6 +68,27 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
       window.clearInterval(intervalId)
     }
   }, [loadNotifications, userId])
+
+  useEffect(() => {
+    if (!open) return
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
 
   async function toggleNotifications() {
     const nextOpen = !open
@@ -126,10 +149,30 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
     onOpenDeletionRequests()
   }
 
+  async function clearNotifications() {
+    if (!supabaseClient || notifications.length === 0) return
+    if (!window.confirm('Clear all notifications? This cannot be undone.')) return
+
+    setClearing(true)
+    setError(null)
+    try {
+      const { error: clearError } = await supabaseClient.rpc('clear_my_notifications')
+      if (clearError) {
+        setError('Could not clear notifications. Run the latest user-account SQL in Supabase.')
+        return
+      }
+      setNotifications([])
+    } catch {
+      setError('Could not clear notifications. Check your connection and try again.')
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const unreadCount = notifications.filter((notification) => !notification.read_at).length
 
   return (
-    <div className="notification-menu">
+    <div className="notification-menu" ref={menuRef}>
       <button
         className="notification-bell"
         type="button"
@@ -146,7 +189,23 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
         <section className="notification-popover" aria-label="Notifications">
           <header>
             <h2>Notifications</h2>
-            <button className="text-action" type="button" onClick={() => setOpen(false)}>Close</button>
+            <div className="notification-header-actions">
+              {notifications.length > 0 && (
+                <button
+                  className="notification-clear"
+                  type="button"
+                  aria-label="Clear notifications"
+                  title="Clear notifications"
+                  disabled={clearing}
+                  onClick={() => { void clearNotifications() }}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                  </svg>
+                </button>
+              )}
+              <button className="text-action" type="button" onClick={() => setOpen(false)}>Close</button>
+            </div>
           </header>
           {error && <p className="notification-error" role="alert">{error}</p>}
           {notifications.length ? (

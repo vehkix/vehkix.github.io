@@ -1,5 +1,5 @@
 git add .
-git commit -m "share optimized and profile features"
+git commit -m "optimized profile, notification based settings"
 git push  origin share-with-user
 npm run build
 npm run deploy

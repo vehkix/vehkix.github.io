@@ -1,5 +1,6 @@
 .notification-menu {
   position: relative;
+  z-index: 60;
 }
 
 .notification-bell {
@@ -42,7 +43,7 @@
 
 .notification-popover {
   position: absolute;
-  z-index: 10;
+  z-index: 60;
   top: calc(100% + 10px);
   right: 0;
   width: min(360px, calc(100vw - 32px));
@@ -68,6 +69,49 @@
   margin: 0;
   color: var(--ink);
   font-size: 14px;
+}
+
+.notification-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.notification-clear {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.notification-clear:hover:not(:disabled) {
+  color: #a3342e;
+  background: #f9eeec;
+}
+
+.notification-clear:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+.notification-clear:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.notification-clear svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .notification-popover ul {
