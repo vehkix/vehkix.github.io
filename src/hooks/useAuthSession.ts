@@ -171,12 +171,16 @@ export function useAuthSession() {
         : 'Could not update your username. Check the latest user-account SQL setup.'
     }
 
-    const { error: metadataError } = await supabaseClient.auth.updateUser({
-      data: { username },
-    })
-    return metadataError
-      ? 'Username saved, but your session could not be refreshed. Please sign in again.'
-      : null
+    setSession((current) => current
+      ? {
+        ...current,
+        user: {
+          ...current.user,
+          user_metadata: { ...current.user.user_metadata, username },
+        },
+      }
+      : current)
+    return null
   }
 
   const profileSyncError = profileSyncState?.userId === session?.user.id

@@ -26,10 +26,19 @@
   font-size: 24px;
 }
 
+.profile-avatar-control {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  flex: 0 0 64px;
+}
+
 .profile-avatar {
+  position: relative;
   display: grid;
   width: 64px;
   height: 64px;
+  padding: 0;
   flex: 0 0 64px;
   overflow: hidden;
   place-items: center;
@@ -37,14 +46,46 @@
   border-radius: 50%;
   color: var(--white);
   background: var(--green);
+  cursor: pointer;
   font-size: 20px;
   font-weight: 700;
+}
+
+.profile-avatar:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+.profile-avatar:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .profile-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.profile-avatar-edit {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 4px 0 5px;
+  color: var(--white);
+  background: rgb(25 31 27 / 72%);
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.profile-avatar:hover .profile-avatar-edit,
+.profile-avatar:focus-visible .profile-avatar-edit {
+  opacity: 1;
+}
+
+.profile-photo-input {
+  display: none;
 }
 
 .profile-panel-content {
@@ -72,35 +113,44 @@
   font-size: 12px;
 }
 
-.profile-upload {
-  position: relative;
-  width: fit-content;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.profile-upload input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
 .profile-remove-photo {
-  width: fit-content;
+  width: 100%;
   padding: 0;
   border: 0;
   color: #a3342e;
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 600;
 }
 
 .profile-remove-photo:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+.username-availability {
+  font-weight: 600 !important;
+}
+
+.username-availability.checking {
+  color: var(--muted);
+}
+
+.username-availability.available {
+  color: var(--green);
+}
+
+.username-availability.taken,
+.username-availability.error {
+  color: #a3342e;
+}
+
+.username-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .profile-delete-card {

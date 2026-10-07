@@ -79,6 +79,25 @@ $$;
 revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
+create or replace function public.is_my_username_available(candidate_username text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select candidate_username ~ '^[A-Za-z0-9_]{3,32}$'
+    and not exists (
+      select 1
+      from public.profiles as profile
+      where lower(profile.username) = lower(btrim(candidate_username))
+        and profile.id <> (select auth.uid())
+    );
+$$;
+
+revoke all on function public.is_my_username_available(text) from public, anon;
+grant execute on function public.is_my_username_available(text) to authenticated;
+
 create or replace function public.update_my_username(new_username text)
 returns void
 language plpgsql

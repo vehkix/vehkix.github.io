@@ -180,3 +180,48 @@
 .notification-error {
   color: #a3342e;
 }
+
+@media (max-width: 520px) {
+  .notification-popover {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 88px);
+    border-radius: 4px;
+  }
+
+  .notification-popover > header {
+    min-height: 48px;
+    padding: 9px 12px;
+  }
+
+  .notification-header-actions {
+    gap: 10px;
+  }
+
+  .notification-clear {
+    width: 40px;
+    height: 40px;
+  }
+
+  .notification-popover li {
+    gap: 8px;
+    padding: 14px 12px;
+  }
+
+  .notification-popover li p {
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .notification-popover time {
+    font-size: 11px;
+  }
+
+  .notification-actions button {
+    min-height: 40px;
+    flex: 1;
+  }
+}

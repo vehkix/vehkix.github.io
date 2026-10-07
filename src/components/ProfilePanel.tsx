@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { supabaseClient } from '../lib/supabase'
 import { getUsernameInitials } from '../lib/profile'
 import '../styles/forms.css'
@@ -18,8 +18,13 @@ interface DeletionRequest {
 }
 
 function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChanged }: ProfilePanelProps) {
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const [username, setUsername] = useState(initialUsername)
   const [savedUsername, setSavedUsername] = useState(initialUsername)
+  const [availability, setAvailability] = useState<{
+    candidate: string
+    status: 'checking' | 'available' | 'taken' | 'error'
+  } | null>(null)
   const [avatarPath, setAvatarPath] = useState<string | null>(null)
   const [avatar, setAvatar] = useState<{ path: string; url: string } | null>(null)
   const [deletionRequest, setDeletionRequest] = useState<DeletionRequest | null>(null)
@@ -28,6 +33,46 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const usernameAvailability = availability?.candidate === username.trim()
+    ? availability.status
+    : 'idle'
+
+  useEffect(() => {
+    const candidate = username.trim()
+    if (
+      candidate === savedUsername
+      || !/^[A-Za-z0-9_]{3,32}$/.test(candidate)
+      || !supabaseClient
+    ) {
+      return
+    }
+
+    const client = supabaseClient
+    let current = true
+    const timeoutId = window.setTimeout(() => {
+      setAvailability({ candidate, status: 'checking' })
+      void (async () => {
+        try {
+          const { data, error: checkError } = await client.rpc('is_my_username_available', {
+            candidate_username: candidate,
+          })
+          if (current) {
+            setAvailability({
+              candidate,
+              status: checkError ? 'error' : data ? 'available' : 'taken',
+            })
+          }
+        } catch {
+          if (current) setAvailability({ candidate, status: 'error' })
+        }
+      })()
+    }, 350)
+
+    return () => {
+      current = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [savedUsername, username])
 
   useEffect(() => {
     if (!supabaseClient) return
@@ -87,11 +132,19 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
     setMessage(null)
     setError(null)
     try {
-      const saveError = await onUpdateUsername(username.trim())
-      if (saveError) setError(saveError)
+      const cleanedUsername = username.trim()
+      const saveError = await onUpdateUsername(cleanedUsername)
+      if (saveError) {
+        setError(saveError)
+        if (saveError.toLowerCase().includes('already in use')) {
+          setAvailability({ candidate: cleanedUsername, status: 'taken' })
+        }
+      }
       else {
-        setSavedUsername(username.trim())
+        setUsername(cleanedUsername)
+        setSavedUsername(cleanedUsername)
         setMessage('Username updated.')
+        setAvailability(null)
       }
     } catch {
       setError('Could not update your username. Try again.')
@@ -243,36 +296,32 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
   return (
     <section className="profile-panel" aria-labelledby="profile-title">
       <header className="profile-panel-heading">
-        <div className="profile-avatar" aria-label={`${username} profile photo`}>
-          {avatar?.path === avatarPath
-            ? <img src={avatar.url} alt="" />
-            : <span>{getUsernameInitials(username)}</span>}
-        </div>
-        <div>
-          <p className="eyebrow">YOUR ACCOUNT</p>
-          <h2 id="profile-title">{username}</h2>
-        </div>
-      </header>
-
-      <div className="profile-panel-content">
-        <section className="profile-card" aria-labelledby="profile-photo-title">
-          <div>
-            <h3 id="profile-photo-title">Profile photo</h3>
-            <p>Upload a JPEG, PNG, or WebP image up to 5 MB.</p>
-          </div>
-          <label className="primary-action profile-upload">
-            {busy ? 'Please wait…' : 'Choose photo'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void uploadAvatar(file)
-                event.target.value = ''
-              }}
-            />
-          </label>
+        <div className="profile-avatar-control">
+          <button
+            className="profile-avatar"
+            type="button"
+            aria-label={avatarPath ? 'Change profile photo' : 'Add profile photo'}
+            title={avatarPath ? 'Click to change your profile photo' : 'Click to add a profile photo'}
+            disabled={busy}
+            onClick={() => avatarInputRef.current?.click()}
+          >
+            {avatar?.path === avatarPath
+              ? <img src={avatar.url} alt="" />
+              : <span>{getUsernameInitials(savedUsername)}</span>}
+            <span className="profile-avatar-edit" aria-hidden="true">Edit</span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            className="profile-photo-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void uploadAvatar(file)
+              event.target.value = ''
+            }}
+          />
           {avatarPath && (
             <button
               className="profile-remove-photo"
@@ -283,8 +332,14 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
               Remove photo
             </button>
           )}
-        </section>
+        </div>
+        <div>
+          <p className="eyebrow">YOUR ACCOUNT</p>
+          <h2 id="profile-title">{savedUsername}</h2>
+        </div>
+      </header>
 
+      <div className="profile-panel-content">
         <form className="profile-card stacked-form" onSubmit={(event) => void saveUsername(event)}>
           <h3>Username</h3>
           <label className="form-field">
@@ -299,10 +354,37 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
               onChange={(event) => setUsername(event.target.value)}
             />
             <small>3–32 letters, numbers, or underscores</small>
+            {username.trim() !== savedUsername && username.trim().length >= 3 && /^[A-Za-z0-9_]{3,32}$/.test(username.trim()) && (
+              <small className={`username-availability ${usernameAvailability}`} role="status" aria-live="polite">
+                {usernameAvailability === 'checking' && 'Checking username…'}
+                {usernameAvailability === 'available' && 'Username is available.'}
+                {usernameAvailability === 'taken' && 'That username is already taken.'}
+                {usernameAvailability === 'error' && 'Could not check username availability.'}
+              </small>
+            )}
           </label>
-          <button className="primary-action" type="submit" disabled={busy || username === savedUsername}>
-            Save username
-          </button>
+          <div className="username-actions">
+            <button
+              className="primary-action"
+              type="submit"
+              disabled={busy || username.trim() === savedUsername || usernameAvailability !== 'available'}
+            >
+              Save username
+            </button>
+            <button
+              className="text-action"
+              type="button"
+              disabled={busy || username === savedUsername}
+              onClick={() => {
+                setUsername(savedUsername)
+                setError(null)
+                setMessage(null)
+                setAvailability(null)
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </form>
 
         <form className="profile-card stacked-form" onSubmit={(event) => void changePassword(event)}>

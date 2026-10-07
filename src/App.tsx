@@ -15,6 +15,7 @@ import type { Vehicle, VehicleDraft } from './types/vehicle'
 import './styles/page.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
+const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
 const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
@@ -26,6 +27,7 @@ function App() {
   const [activeView, setActiveView] = useState<'collection' | 'admin'>(() =>
     window.location.hash === '#admin' ? 'admin' : 'collection',
   )
+  const [showAbout, setShowAbout] = useState(() => window.location.hash === '#about-vehkix')
   const [query, setQuery] = useState('')
   const [showDueVehicles, setShowDueVehicles] = useState(false)
   const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null)
@@ -126,6 +128,7 @@ function App() {
   useEffect(() => {
     function syncViewFromHash() {
       setActiveView(window.location.hash === '#admin' ? 'admin' : 'collection')
+      setShowAbout(window.location.hash === '#about-vehkix')
       setShowProfile(false)
     }
 
@@ -142,6 +145,7 @@ function App() {
 
   function navigateToView(view: 'collection' | 'admin') {
     setActiveView(view)
+    setShowAbout(false)
     window.location.hash = view === 'admin' ? 'admin' : 'top'
   }
 
@@ -291,7 +295,7 @@ function App() {
   return (
     <main className="page-shell">
       <header className="topbar">
-        {session && (
+        {(session || showAbout) && (
           <span className="wordmark"><img src={brandMark} alt="Vehkix" /></span>
         )}
         <div className="topbar-actions">
@@ -351,14 +355,19 @@ function App() {
                 </button>
                 {profileMenuOpen && (
                   <div className="profile-menu-popover" role="menu" aria-label="Profile options">
+                    <span className="profile-menu-username" role="presentation">{username}</span>
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => {
+                        setShowAbout(false)
                         setShowProfile(true)
                         setShowVehicleForm(false)
                         setEditingVehicle(null)
                         setProfileMenuOpen(false)
+                        if (window.location.hash !== '#top') {
+                          window.history.replaceState(null, '', `${window.location.pathname}#top`)
+                        }
                       }}
                     >
                       Profile
@@ -381,7 +390,7 @@ function App() {
         </div>
       </header>
 
-      <section className="fleet" id="top" aria-labelledby="page-title">
+      <section className="fleet" id="top" aria-labelledby="page-title" hidden={showAbout}>
         <div className="page-heading">
           <div>
             <h1 id="page-title">
@@ -694,6 +703,15 @@ function App() {
           </footer>
         )}
       </section>
+      {showAbout && (
+        <Suspense fallback={<p className="empty-state" role="status">Loading About Vehkix…</p>}>
+          <AboutPage />
+        </Suspense>
+      )}
+      <footer className="site-footer">
+        <a href="#about-vehkix">About Vehkix</a>
+        <a href="mailto:vehkix@gmail.com">Support</a>
+      </footer>
     </main>
   )
 }
