@@ -10,7 +10,7 @@ function AboutPage() {
           Vehkix helps people keep vehicle details, maintenance, and important documents
           together—so caring for a vehicle feels simpler and more organized.
         </p>
-        <a className="primary-action" href="#top">Explore Vehkix</a>
+        <a className="primary-action" href="/">Explore Vehkix</a>
       </header>
 
       <section className="about-intro" aria-labelledby="about-why-title">

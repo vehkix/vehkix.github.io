@@ -543,6 +543,26 @@ h1 {
   text-align: center;
 }
 
+.site-footer {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 18px 0 28px;
+  border-top: 1px solid var(--line);
+}
+
+.site-footer a {
+  color: var(--muted);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 @media (max-width: 760px) {
   .page-shell {
     width: min(100% - 36px, 560px);

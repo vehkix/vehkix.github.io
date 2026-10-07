@@ -155,7 +155,7 @@ export function useAuthSession() {
     }
 
     setIsPasswordRecovery(false)
-    window.history.replaceState(null, '', `${window.location.pathname}#top`)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     return { kind: 'success', message: 'Your password has been updated.' }
   }
 

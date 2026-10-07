@@ -1,5 +1,5 @@
 git add .
-git commit -m "profile updates and about vehkix page"
+git commit -m "fixed /#top"
 git push  origin share-with-user
 npm run build
 npm run deploy

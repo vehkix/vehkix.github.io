@@ -133,20 +133,27 @@ function App() {
     }
 
     window.addEventListener('hashchange', syncViewFromHash)
-    return () => window.removeEventListener('hashchange', syncViewFromHash)
+    window.addEventListener('popstate', syncViewFromHash)
+    return () => {
+      window.removeEventListener('hashchange', syncViewFromHash)
+      window.removeEventListener('popstate', syncViewFromHash)
+    }
   }, [])
 
   useEffect(() => {
     if (!authReady || !session || adminAccessLoading || isAdmin) return
     if (window.location.hash !== '#admin') return
 
-    window.location.replace('#top')
+    window.location.replace(`${window.location.pathname}${window.location.search}`)
   }, [authReady, session, adminAccessLoading, isAdmin])
 
   function navigateToView(view: 'collection' | 'admin') {
     setActiveView(view)
     setShowAbout(false)
-    window.location.hash = view === 'admin' ? 'admin' : 'top'
+    const url = view === 'admin'
+      ? `${window.location.pathname}${window.location.search}#admin`
+      : `${window.location.pathname}${window.location.search}`
+    window.history.pushState(null, '', url)
   }
 
   function handleAdminSectionChange(section: AdminSection) {
@@ -365,9 +372,7 @@ function App() {
                         setShowVehicleForm(false)
                         setEditingVehicle(null)
                         setProfileMenuOpen(false)
-                        if (window.location.hash !== '#top') {
-                          window.history.replaceState(null, '', `${window.location.pathname}#top`)
-                        }
+                        navigateToView('collection')
                       }}
                     >
                       Profile
