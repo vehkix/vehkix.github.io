@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import brandMark from '../images/logo/vehkix-mark-color.png'
 import brandWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
 import { supabaseClient } from './lib/supabase'
@@ -86,6 +86,10 @@ function App() {
     saveVehicle,
     deleteVehicle,
   } = useMyVehicles(session, adminView, adminRefreshToken)
+
+  useLayoutEffect(() => {
+    if (showAbout) window.scrollTo(0, 0)
+  }, [showAbout])
 
   useEffect(() => {
     if (!supabaseClient || !session?.user.id) return

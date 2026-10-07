@@ -2,7 +2,7 @@ import './AboutPage.css'
 
 function AboutPage() {
   return (
-    <article className="about-page" aria-labelledby="about-title">
+    <article id="about-vehkix" className="about-page" aria-labelledby="about-title">
       <header className="about-hero">
         <p className="eyebrow">ABOUT VEHKIX</p>
         <h1 id="about-title">A clearer way to care for every vehicle.</h1>

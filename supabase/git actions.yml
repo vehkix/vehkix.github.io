@@ -1,5 +1,5 @@
 git add .
-git commit -m "fixed /#top"
+git commit -m "about page"
 git push  origin share-with-user
 npm run build
 npm run deploy
