@@ -54,7 +54,6 @@ export function useAuthSession() {
     if (!supabaseClient || !session?.user.id) return
 
     const client = supabaseClient
-    const userId = session.user.id
     let current = true
     let checkingUser = false
 
