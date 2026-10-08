@@ -128,6 +128,28 @@ function VehicleForm({
     }
   }
 
+  function clearAll() {
+    if (!window.confirm('Clear all vehicle details and selected photos? This cannot be undone.')) return
+
+    images.forEach((image) => {
+      URL.revokeObjectURL(image.previewUrl)
+      previewUrls.current.delete(image.previewUrl)
+    })
+    setDraft(emptyDraft)
+    originalDraft.current = emptyDraft
+    setImages([])
+    setRetainedImages([])
+    setPrimaryImageKey('')
+    setError(null)
+
+    try {
+      if (draftStorageKey) localStorage.removeItem(draftStorageKey)
+      setDraftNotice('All vehicle details and selected photos were cleared.')
+    } catch {
+      setDraftNotice('The form was cleared, but the saved browser draft could not be removed.')
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -399,9 +421,14 @@ function VehicleForm({
           Cancel
         </button>
         {!initialDraft && (
-          <button className="text-action" type="button" onClick={saveAsDraft} disabled={saving}>
-            Save as draft
-          </button>
+          <>
+            <button className="text-action" type="button" onClick={clearAll} disabled={saving}>
+              Clear all
+            </button>
+            <button className="text-action" type="button" onClick={saveAsDraft} disabled={saving}>
+              Save as draft
+            </button>
+          </>
         )}
         <button className="primary-action" type="submit" disabled={saving}>
           {saving ? 'Saving…' : initialDraft ? 'Save changes' : 'Save vehicle'}
