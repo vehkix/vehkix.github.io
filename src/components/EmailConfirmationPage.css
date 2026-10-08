@@ -1,0 +1,34 @@
+.email-confirmation-page {
+  max-width: 520px;
+  margin: 74px auto 96px;
+  padding: 32px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+
+.email-confirmation-page h1 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(26px, 5vw, 36px);
+}
+
+.email-confirmation-page > p:not(.eyebrow) {
+  margin: 0 0 24px;
+}
+
+.email-confirmation-form {
+  display: grid;
+  gap: 14px;
+}
+
+.email-confirmation-form .auth-link {
+  justify-self: center;
+}
+
+@media (max-width: 600px) {
+  .email-confirmation-page {
+    margin: 40px auto 64px;
+    padding: 24px;
+  }
+}

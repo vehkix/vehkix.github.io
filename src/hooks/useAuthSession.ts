@@ -55,6 +55,51 @@ export function useAuthSession() {
 
     const client = supabaseClient
     const userId = session.user.id
+    let current = true
+    let checkingUser = false
+
+    async function signOutIfDeleted() {
+      if (checkingUser || document.visibilityState !== 'visible') return
+      checkingUser = true
+      try {
+        const { error: userError } = await client.auth.getUser()
+        if (!current || !userError) return
+
+        const accountWasDeleted = userError.code === 'user_not_found'
+          || (userError.status === 404 && userError.message.toLowerCase().includes('user'))
+        if (accountWasDeleted) {
+          const { error: signOutError } = await client.auth.signOut({ scope: 'local' })
+          if (current && signOutError) {
+            setError('Your account was deleted, but this session could not be cleared. Reload the page.')
+          }
+        } else if (current && error === 'Could not verify your account session. Check your connection.') {
+          setError(null)
+        }
+      } catch {
+        if (current) setError('Could not verify your account session. Check your connection.')
+      } finally {
+        checkingUser = false
+      }
+    }
+
+    const intervalId = window.setInterval(() => { void signOutIfDeleted() }, 30_000)
+    window.addEventListener('focus', signOutIfDeleted)
+    document.addEventListener('visibilitychange', signOutIfDeleted)
+    void signOutIfDeleted()
+
+    return () => {
+      current = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', signOutIfDeleted)
+      document.removeEventListener('visibilitychange', signOutIfDeleted)
+    }
+  }, [session?.user.id])
+
+  useEffect(() => {
+    if (!supabaseClient || !session?.user.id) return
+
+    const client = supabaseClient
+    const userId = session.user.id
     let isCurrent = true
 
     async function syncProfile() {
@@ -96,7 +141,10 @@ export function useAuthSession() {
     const { data, error: signUpError } = await supabaseClient.auth.signUp({
       email: values.email,
       password: values.password,
-      options: { data: { username: values.username } },
+      options: {
+        data: { username: values.username },
+        emailRedirectTo: getEmailConfirmationRedirectUrl(),
+      },
     })
     if (signUpError) {
       const message = signUpError.message.toLowerCase()
@@ -142,6 +190,21 @@ export function useAuthSession() {
     return resetError
       ? { kind: 'error', message: 'Could not send a password reset email. Try again.' }
       : { kind: 'success', message: 'If an account uses that email, a password reset link has been sent.' }
+  }
+
+  async function resendSignupConfirmation(email: string): Promise<AuthFeedback> {
+    if (!supabaseClient) {
+      return { kind: 'error', message: 'Supabase is not configured.' }
+    }
+
+    const { error: resendError } = await supabaseClient.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: getEmailConfirmationRedirectUrl() },
+    })
+    return resendError
+      ? { kind: 'error', message: 'Could not resend the confirmation email. Check the address and try again.' }
+      : { kind: 'success', message: 'If the address can be confirmed, a new email has been sent.' }
   }
 
   async function updatePassword(password: string): Promise<AuthFeedback> {
@@ -195,8 +258,15 @@ export function useAuthSession() {
     isPasswordRecovery,
     submitAuth,
     requestPasswordReset,
+    resendSignupConfirmation,
     updatePassword,
     updateUsername,
     signOut,
   }
+}
+
+function getEmailConfirmationRedirectUrl() {
+  const redirectTo = new URL(window.location.pathname, window.location.origin)
+  redirectTo.searchParams.set('email-confirmation', '1')
+  return redirectTo.toString()
 }

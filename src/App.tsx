@@ -17,6 +17,7 @@ import './styles/page.css'
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
+const EmailConfirmationPage = lazy(() => import('./components/EmailConfirmationPage'))
 const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
 const ProfilePanel = lazy(() => import('./components/ProfilePanel'))
@@ -28,6 +29,10 @@ function App() {
     window.location.hash === '#admin' ? 'admin' : 'collection',
   )
   const [showAbout, setShowAbout] = useState(() => window.location.hash === '#about-vehkix')
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(() =>
+    new URLSearchParams(window.location.search).has('email-confirmation'),
+  )
+  const [confirmationEmail, setConfirmationEmail] = useState('')
   const [query, setQuery] = useState('')
   const [showDueVehicles, setShowDueVehicles] = useState(false)
   const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null)
@@ -54,6 +59,7 @@ function App() {
     isPasswordRecovery,
     submitAuth,
     requestPasswordReset,
+    resendSignupConfirmation,
     updatePassword,
     updateUsername,
     signOut,
@@ -133,6 +139,7 @@ function App() {
     function syncViewFromHash() {
       setActiveView(window.location.hash === '#admin' ? 'admin' : 'collection')
       setShowAbout(window.location.hash === '#about-vehkix')
+      setShowEmailConfirmation(new URLSearchParams(window.location.search).has('email-confirmation'))
       setShowProfile(false)
     }
 
@@ -158,6 +165,23 @@ function App() {
       ? `${window.location.pathname}${window.location.search}#admin`
       : `${window.location.pathname}${window.location.search}`
     window.history.pushState(null, '', url)
+  }
+
+  function openEmailConfirmation(email: string) {
+    const url = new URL(window.location.href)
+    url.searchParams.set('email-confirmation', '1')
+    url.hash = ''
+    window.history.pushState(null, '', url)
+    setConfirmationEmail(email)
+    setShowEmailConfirmation(true)
+  }
+
+  function returnFromEmailConfirmation() {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('email-confirmation')
+    url.hash = ''
+    window.history.replaceState(null, '', url)
+    setShowEmailConfirmation(false)
   }
 
   function handleAdminSectionChange(section: AdminSection) {
@@ -306,7 +330,7 @@ function App() {
   return (
     <main className="page-shell">
       <header className="topbar">
-        {(session || showAbout) && (
+        {(session || showAbout || showEmailConfirmation) && (
           <span className="wordmark"><img src={brandMark} alt="Vehkix" /></span>
         )}
         <div className="topbar-actions">
@@ -314,7 +338,7 @@ function App() {
             <span aria-hidden="true" />
             {!supabaseClient ? 'SETUP REQUIRED' : !authReady ? 'CONNECTING' : 'CONNECTED'}
           </span>
-          {session && (
+          {session && !showEmailConfirmation && (
             <>
               <Suspense fallback={null}>
                 <NotificationBell
@@ -399,7 +423,7 @@ function App() {
         </div>
       </header>
 
-      <section className="fleet" id="top" aria-labelledby="page-title" hidden={showAbout}>
+      <section className="fleet" id="top" aria-labelledby="page-title" hidden={showAbout || showEmailConfirmation}>
         <div className="page-heading">
           <div>
             <h1 id="page-title">
@@ -489,7 +513,11 @@ function App() {
 
         {!session && authReady && supabaseClient && (
           <Suspense fallback={<p className="empty-state" role="status">Loading sign in…</p>}>
-            <AuthPanel onSubmit={submitAuth} onForgotPassword={requestPasswordReset} />
+            <AuthPanel
+              onSubmit={submitAuth}
+              onForgotPassword={requestPasswordReset}
+              onSignupPending={openEmailConfirmation}
+            />
           </Suspense>
         )}
 
@@ -712,6 +740,16 @@ function App() {
           </footer>
         )}
       </section>
+      {showEmailConfirmation && (
+        <Suspense fallback={<p className="empty-state" role="status">Loading email confirmation…</p>}>
+          <EmailConfirmationPage
+            email={confirmationEmail}
+            isVerified={Boolean(session?.user.email_confirmed_at)}
+            onResend={resendSignupConfirmation}
+            onReturnToSignIn={returnFromEmailConfirmation}
+          />
+        </Suspense>
+      )}
       {showAbout && (
         <Suspense fallback={<p className="empty-state" role="status">Loading About Vehkix…</p>}>
           <AboutPage />

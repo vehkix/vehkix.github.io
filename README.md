@@ -22,14 +22,16 @@ select id from auth.users where lower(email) = lower('admin@example.com')
 on conflict (user_id) do nothing;
 ```
 
-4. Users can edit their username and password, upload a profile photo, or request account deletion from the Profile tab. Admins can review deletion requests, manage a selected user's vehicles, and delete accounts after confirmation. An administrator cannot delete their own active account or the last remaining administrator.
+4. Users can edit their username and password, upload a profile photo, or request account deletion from the Profile tab. Admins can review deletion requests, manage a selected user's vehicles, and delete accounts after confirmation. Account deletion removes the Auth user and profile; an already-open session is checked when the app is opened/focused and every 30 seconds while visible, then signed out after Supabase reports that the user no longer exists. An administrator cannot delete their own active account or the last remaining administrator.
 5. Re-running the SQL migration is safe for existing vehicle rows; it adds/updates profile, notification, sharing, and deletion-request tables, database functions, Storage policies, and row-level security policies. Existing shares stay accepted; new shares require recipient approval.
 6. `supabase/setup.sql` is legacy demo data only; it drops and recreates `public.vehicles`, which this interface no longer reads. It is not needed for the private collection app.
 7. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the project URL and publishable/anon key. Never expose a `service_role` key in browser code or GitHub Pages settings.
 8. In **Authentication > URL Configuration**, set the **Site URL** to `https://fayisdotdev.github.io/vehkix/` and add these **Redirect URLs**:
    - `https://fayisdotdev.github.io/vehkix/?password-reset=1`
+   - `https://fayisdotdev.github.io/vehkix/?email-confirmation=1`
    - `http://localhost:5173/?password-reset=1` for local development
-   The login screen's **Forgot password?** link sends Supabase's password recovery email. Keep the recovery link in the Supabase email template (normally `{{ .ConfirmationURL }}`); the user returns to Vehkix to enter and confirm a new password. Ensure email sending is enabled in **Authentication > Providers > Email**. For production use, configure a custom SMTP provider in **Authentication > SMTP Settings** so delivery is reliable.
+   - `http://localhost:5173/?email-confirmation=1` for local development
+   In **Authentication > Providers > Email**, enable **Confirm email**. Signup then sends a confirmation email and shows a dedicated Vehkix inbox page; the email link returns the user to that page, where the confirmed state is shown. Any email provider is accepted if its owner can open the verification email; this does not restrict signup to Gmail. Keep the confirmation/recovery links in the Supabase email templates (normally `{{ .ConfirmationURL }}`). The login screen's **Forgot password?** link also returns users to Vehkix to enter and confirm a new password. For reliable delivery, configure a custom SMTP provider in **Authentication > SMTP Settings**.
 
 ## GitHub Pages
 

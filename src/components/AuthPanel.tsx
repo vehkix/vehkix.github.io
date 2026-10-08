@@ -8,9 +8,10 @@ export type { AuthFeedback, AuthMode, AuthValues } from '../types/auth'
 interface AuthPanelProps {
   onSubmit: (mode: AuthMode, values: AuthValues) => Promise<AuthFeedback>
   onForgotPassword: (email: string) => Promise<AuthFeedback>
+  onSignupPending: (email: string) => void
 }
 
-function AuthPanel({ onSubmit, onForgotPassword }: AuthPanelProps) {
+function AuthPanel({ onSubmit, onForgotPassword, onSignupPending }: AuthPanelProps) {
   const [mode, setMode] = useState<AuthMode>('sign-in')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -25,7 +26,9 @@ function AuthPanel({ onSubmit, onForgotPassword }: AuthPanelProps) {
     setSubmitting(true)
     setFeedback(null)
     try {
-      setFeedback(await onSubmit(mode, { username: username.trim(), email: email.trim(), password }))
+      const result = await onSubmit(mode, { username: username.trim(), email: email.trim(), password })
+      setFeedback(result)
+      if (mode === 'sign-up' && result.kind === 'success') onSignupPending(email.trim())
     } catch {
       setFeedback({ kind: 'error', message: 'Could not connect to the account service. Try again.' })
     } finally {

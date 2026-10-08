@@ -300,6 +300,8 @@ begin
   where (bucket_id = 'user-vehicle-images' or bucket_id = 'user-profile-images')
     and name like target_user_id::text || '/%';
 
+  delete from public.profiles where id = target_user_id;
+
   delete from auth.users where id = target_user_id;
   if not found then
     raise exception 'User account not found';
