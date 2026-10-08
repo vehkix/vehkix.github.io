@@ -50,11 +50,12 @@ export function useAdminUserManagement(isAdmin: boolean) {
       const { error: deleteError } = await supabaseClient.rpc('admin_delete_user', {
         target_user_id: userId,
       })
-      if (deleteError) return 'Could not delete this account. Your active account and the last administrator are protected.'
+      if (deleteError) return `Could not delete this account: ${deleteError.message}`
       await loadRequests()
       return null
-    } catch {
-      return 'Could not connect to the account service. Try again.'
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown account service error.'
+      return `Could not connect to the account service: ${detail}`
     }
   }
 
@@ -69,11 +70,12 @@ export function useAdminUserManagement(isAdmin: boolean) {
         target_request_id: request.id,
         approve_request: approve,
       })
-      if (resolveError) return `Could not ${approve ? 'approve' : 'reject'} this request. Refresh the page and try again.`
+      if (resolveError) return `Could not ${approve ? 'approve' : 'reject'} this request: ${resolveError.message}`
       await loadRequests()
       return null
-    } catch {
-      return 'Could not connect to the account service. Try again.'
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown account service error.'
+      return `Could not connect to the account service: ${detail}`
     }
   }
 

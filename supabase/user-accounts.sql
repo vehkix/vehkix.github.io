@@ -335,23 +335,7 @@ begin
   end if;
 
   if approve_request then
-    if request_row.user_id is null or request_row.user_id = (select auth.uid()) then
-      raise exception 'This account cannot be deleted through a user request';
-    end if;
-    if exists (select 1 from public.admin_users where user_id = request_row.user_id)
-      and not exists (
-        select 1 from public.admin_users
-        where user_id <> request_row.user_id
-      ) then
-      raise exception 'The last administrator account cannot be deleted';
-    end if;
-    update public.account_deletion_requests
-    set status = 'approved', updated_at = now()
-    where id = target_request_id;
-    delete from storage.objects
-    where (bucket_id = 'user-vehicle-images' or bucket_id = 'user-profile-images')
-      and name like request_row.user_id::text || '/%';
-    delete from auth.users where id = request_row.user_id;
+    perform public.admin_delete_user(request_row.user_id);
   else
     update public.account_deletion_requests
     set status = 'rejected', updated_at = now()

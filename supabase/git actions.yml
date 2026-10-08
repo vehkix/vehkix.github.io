@@ -1,5 +1,5 @@
 git add .
-git commit -m "about page"
+git commit -m "tried user deletion aint happening"
 git push  origin share-with-user
 npm run build
 npm run deploy
