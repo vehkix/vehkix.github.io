@@ -6,6 +6,7 @@ import './VehicleForm.css'
 
 interface VehicleFormProps {
   initialDraft?: VehicleDraft
+  draftStorageKey?: string
   fieldSettings: VehicleFieldSettings
   existingImages?: ExistingVehicleImage[]
   initialPrimaryImagePath?: string | null
@@ -47,8 +48,29 @@ const emptyDraft: VehicleDraft = {
   notes: '',
 }
 
+function loadSavedDraft(key?: string): { draft: VehicleDraft; restored: boolean } {
+  if (!key) return { draft: emptyDraft, restored: false }
+  try {
+    const saved = localStorage.getItem(key)
+    if (!saved) return { draft: emptyDraft, restored: false }
+    const parsed: unknown = JSON.parse(saved)
+    if (
+      typeof parsed !== 'object'
+      || parsed === null
+      || !Object.keys(emptyDraft).every((field) => typeof Reflect.get(parsed, field) === 'string')
+    ) {
+      localStorage.removeItem(key)
+      return { draft: emptyDraft, restored: false }
+    }
+    return { draft: parsed as VehicleDraft, restored: true }
+  } catch {
+    return { draft: emptyDraft, restored: false }
+  }
+}
+
 function VehicleForm({
   initialDraft,
+  draftStorageKey,
   fieldSettings,
   existingImages = [],
   initialPrimaryImagePath,
@@ -57,7 +79,9 @@ function VehicleForm({
 }: VehicleFormProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const previewUrls = useRef(new Set<string>())
-  const [draft, setDraft] = useState<VehicleDraft>(() => initialDraft ?? emptyDraft)
+  const [savedDraft] = useState(() => loadSavedDraft(draftStorageKey))
+  const [draft, setDraft] = useState<VehicleDraft>(() => initialDraft ?? savedDraft.draft)
+  const originalDraft = useRef(draft)
   const [primaryImageKey, setPrimaryImageKey] = useState(
     initialPrimaryImagePath ?? existingImages[0]?.path ?? '',
   )
@@ -65,6 +89,11 @@ function VehicleForm({
   const [retainedImages, setRetainedImages] = useState<ExistingVehicleImage[]>(existingImages)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [draftNotice, setDraftNotice] = useState<string | null>(() =>
+    !initialDraft && savedDraft.restored
+      ? 'Saved draft restored. Photos are not stored and must be selected again.'
+      : null,
+  )
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
   useEffect(() => {
@@ -84,6 +113,21 @@ function VehicleForm({
     setDraft((current) => ({ ...current, [field]: value }))
   }
 
+  function saveAsDraft() {
+    if (!draftStorageKey) {
+      setError('Draft saving is only available when adding a new vehicle.')
+      return
+    }
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(draft))
+      originalDraft.current = draft
+      setError(null)
+      setDraftNotice('Draft saved in this browser. Photos are not included and must be selected again.')
+    } catch {
+      setError('Could not save a draft in this browser. Check your browser storage and try again.')
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -101,6 +145,14 @@ function VehicleForm({
         primaryIndex < 0 ? null : primaryIndex,
       )
       if (message) setError(message)
+      else if (draftStorageKey) {
+        try {
+          localStorage.removeItem(draftStorageKey)
+          setDraftNotice(null)
+        } catch {
+          setDraftNotice('Vehicle saved, but this browser could not clear its saved draft.')
+        }
+      }
     } catch {
       setError('Could not connect to the vehicle service. Try again.')
     } finally {
@@ -135,9 +187,8 @@ function VehicleForm({
   }
 
   function hasUnsavedChanges() {
-    const originalDraft = initialDraft ?? emptyDraft
     const draftChanged = Object.keys(emptyDraft).some((key) =>
-      draft[key as keyof VehicleDraft] !== originalDraft[key as keyof VehicleDraft],
+      draft[key as keyof VehicleDraft] !== originalDraft.current[key as keyof VehicleDraft],
     )
     const originalPaths = existingImages.map((image) => image.path)
     const retainedPaths = retainedImages.map((image) => image.path)
@@ -342,10 +393,16 @@ function VehicleForm({
       </div>}
 
       {error && <p className="form-feedback error" role="alert">{error}</p>}
+      {draftNotice && <p className="form-feedback" role="status">{draftNotice}</p>}
       <div className="form-actions">
         <button className="text-action" type="button" onClick={requestClose} disabled={saving}>
           Cancel
         </button>
+        {!initialDraft && (
+          <button className="text-action" type="button" onClick={saveAsDraft} disabled={saving}>
+            Save as draft
+          </button>
+        )}
         <button className="primary-action" type="submit" disabled={saving}>
           {saving ? 'Saving…' : initialDraft ? 'Save changes' : 'Save vehicle'}
         </button>

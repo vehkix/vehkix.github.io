@@ -644,6 +644,7 @@ function App() {
             <VehicleForm
               key={editingVehicle?.id ?? 'new-vehicle'}
               initialDraft={editingVehicle ? toVehicleDraft(editingVehicle) : undefined}
+              draftStorageKey={editingVehicle ? undefined : `vehicle-draft:${session.user.id}`}
               fieldSettings={fieldSettings}
               existingImages={editingVehicle?.signed_images ?? []}
               initialPrimaryImagePath={editingVehicle?.primary_image}

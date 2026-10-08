@@ -17,6 +17,35 @@ interface ProfileSummary {
   email: string | null
 }
 
+function describeSaveError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object' && error !== null) {
+    const message = 'message' in error && typeof error.message === 'string' ? error.message : null
+    const code = 'code' in error && typeof error.code === 'string' ? error.code : null
+    return [code, message].filter(Boolean).join(': ')
+  }
+  return String(error)
+}
+
+function validateNumericFields(draft: VehicleDraft): string | null {
+  const fields = [
+    ['year', 'Year'],
+    ['last_service_km', 'Last service mileage'],
+    ['next_service_km', 'Next service mileage'],
+  ] as const
+
+  for (const [field, label] of fields) {
+    const value = draft[field].trim()
+    if (!value) continue
+    const number = Number(value)
+    if (!Number.isSafeInteger(number) || number < 0 || number > 2_147_483_647) {
+      return `${label} must be a whole number between 0 and 2,147,483,647.`
+    }
+  }
+
+  return null
+}
+
 async function signVehicleImages(paths: string[]): Promise<VehicleImage[]> {
   if (!supabaseClient) return []
   const client = supabaseClient
@@ -239,6 +268,8 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
     editingVehicleId?: string,
   ): Promise<string | null> {
     if (!supabaseClient || !session) return 'Sign in before saving a vehicle.'
+    const numericFieldError = validateNumericFields(draft)
+    if (numericFieldError) return numericFieldError
     const client = supabaseClient
     const editingVehicle = editingVehicleId
       ? records.find((vehicle) => vehicle.id === editingVehicleId)
@@ -263,10 +294,14 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
           .upload(path, image, { contentType: image.type, upsert: false })
 
         if (error) {
+          console.error('Vehicle image upload failed:', error)
           if (uploadedPaths.length > 0) {
-            await client.storage.from('user-vehicle-images').remove(uploadedPaths)
+            const { error: cleanupError } = await client.storage
+              .from('user-vehicle-images')
+              .remove(uploadedPaths)
+            if (cleanupError) console.error('Vehicle image cleanup failed:', cleanupError)
           }
-          return 'Could not upload an image. Check the file and try again.'
+          return `Could not upload an image (${error.statusCode ?? error.name}): ${error.message}`
         }
         uploadedPaths.push(path)
       }
@@ -299,9 +334,22 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
 
       if (result.error) {
         if (uploadedPaths.length > 0) {
-          await client.storage.from('user-vehicle-images').remove(uploadedPaths)
+          const { error: cleanupError } = await client.storage
+            .from('user-vehicle-images')
+            .remove(uploadedPaths)
+          if (cleanupError) console.error('Vehicle image cleanup failed:', cleanupError)
         }
-        return 'Could not save this vehicle. Check your connection and try again.'
+        console.error('Vehicle save failed:', result.error)
+        if (result.error.code === '42501') {
+          return 'The database denied permission to save this vehicle. Check the latest user-account setup SQL and try again.'
+        }
+        if (['PGRST204', '42P01', '42703'].includes(result.error.code ?? '')) {
+          return 'The vehicle database schema is out of date. Run the latest user-account setup SQL and try again.'
+        }
+        if (result.error.code) {
+          return `Could not save this vehicle (database error ${result.error.code}). Share this code if you need support.`
+        }
+        return `Could not save this vehicle: ${result.error.message}`
       }
 
       const signedImages = await signVehicleImages(imagePaths)
@@ -330,11 +378,19 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
       }
       setErrorState(null)
       return null
-    } catch {
+    } catch (error) {
+      console.error('Vehicle save failed:', error)
       if (uploadedPaths.length > 0) {
-        await client.storage.from('user-vehicle-images').remove(uploadedPaths)
+        try {
+          const { error: cleanupError } = await client.storage
+            .from('user-vehicle-images')
+            .remove(uploadedPaths)
+          if (cleanupError) console.error('Vehicle image cleanup failed:', cleanupError)
+        } catch (cleanupError) {
+          console.error('Vehicle image cleanup failed:', cleanupError)
+        }
       }
-      return 'Could not save this vehicle. Check your connection and try again.'
+      return `Could not save this vehicle: ${describeSaveError(error)}`
     }
   }
 
