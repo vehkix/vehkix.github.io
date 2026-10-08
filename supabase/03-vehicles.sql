@@ -1,4 +1,4 @@
--- Vehicle records and row-level security
+-- Vehicle records, row-level security, and public usage totals
 -- Run as step 3 in the Supabase setup sequence documented in README.md.
 
 create table if not exists public.user_vehicles (
@@ -97,4 +97,19 @@ create policy user_vehicles_delete_admin
   using ((select public.is_admin()));
 
 grant select, insert, update, delete on public.user_vehicles to authenticated;
+
+create or replace function public.get_public_usage_stats()
+returns table (user_count bigint, vehicle_count bigint)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    (select count(*) from auth.users),
+    (select count(*) from public.user_vehicles);
+$$;
+
+revoke all on function public.get_public_usage_stats() from public, anon, authenticated;
+grant execute on function public.get_public_usage_stats() to anon, authenticated;
 

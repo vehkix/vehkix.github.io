@@ -1,6 +1,93 @@
+import { useEffect, useRef, useState } from 'react'
+import { supabaseClient } from '../lib/supabase'
 import './AboutPage.css'
 
 function AboutPage() {
+  const statsSection = useRef<HTMLElement | null>(null)
+  const [stats, setStats] = useState<{ users: number; vehicles: number } | null>(null)
+  const [animatedStats, setAnimatedStats] = useState({ users: 0, vehicles: 0 })
+  const [statsUnavailable, setStatsUnavailable] = useState(!supabaseClient)
+
+  useEffect(() => {
+    if (!supabaseClient) return
+
+    let isCurrent = true
+    void supabaseClient.rpc('get_public_usage_stats').maybeSingle()
+      .then(({ data, error }) => {
+        if (!isCurrent) return
+        const result = data as { user_count: number | string; vehicle_count: number | string } | null
+        if (error || !result) {
+          setStatsUnavailable(true)
+          return
+        }
+
+        const users = Number(result.user_count)
+        const vehicles = Number(result.vehicle_count)
+        if (!Number.isSafeInteger(users) || users < 0 || !Number.isSafeInteger(vehicles) || vehicles < 0) {
+          setStatsUnavailable(true)
+          return
+        }
+
+        setStats({ users, vehicles })
+      }, () => {
+        if (isCurrent) setStatsUnavailable(true)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!stats) return
+    const targetStats = stats
+
+    let frameId = 0
+    let observer: IntersectionObserver | undefined
+    let isCurrent = true
+
+    function animateCounts() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setAnimatedStats(targetStats)
+        return
+      }
+
+      const duration = 1400
+      let startTime: number | undefined
+      function updateCounts(timestamp: number) {
+        if (!isCurrent) return
+        startTime ??= timestamp
+        const progress = Math.min((timestamp - startTime) / duration, 1)
+        const easedProgress = 1 - (1 - progress) ** 3
+        setAnimatedStats({
+          users: Math.round(targetStats.users * easedProgress),
+          vehicles: Math.round(targetStats.vehicles * easedProgress),
+        })
+        if (progress < 1) frameId = requestAnimationFrame(updateCounts)
+      }
+      frameId = requestAnimationFrame(updateCounts)
+    }
+
+    const section = statsSection.current
+    if (!section || !('IntersectionObserver' in window)) {
+      animateCounts()
+    } else {
+      observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer?.disconnect()
+          animateCounts()
+        }
+      }, { threshold: 0.35 })
+      observer.observe(section)
+    }
+
+    return () => {
+      isCurrent = false
+      cancelAnimationFrame(frameId)
+      observer?.disconnect()
+    }
+  }, [stats])
+
   return (
     <article id="about-vehkix" className="about-page" aria-labelledby="about-title">
       <header className="about-hero">
@@ -88,6 +175,26 @@ function AboutPage() {
         <h2 id="about-contact-title">Questions or feedback?</h2>
         <p>We’d be glad to hear from you.</p>
         <a href="mailto:vehkix@gmail.com">vehkix@gmail.com</a>
+      </section>
+
+      <section
+        ref={statsSection}
+        className="about-stats"
+        aria-label="Vehkix community statistics"
+        aria-busy={!stats && !statsUnavailable}
+      >
+        <p className="eyebrow">VEHKIX COMMUNITY</p>
+        <div className="about-stats-grid">
+          <div className="about-stat">
+            <strong>{stats ? animatedStats.users.toLocaleString() : '—'}</strong>
+            <span>Users</span>
+          </div>
+          <div className="about-stat">
+            <strong>{stats ? animatedStats.vehicles.toLocaleString() : '—'}</strong>
+            <span>Vehicles</span>
+          </div>
+        </div>
+        {statsUnavailable && <p className="about-stats-error" role="status">Statistics are currently unavailable.</p>}
       </section>
     </article>
   )

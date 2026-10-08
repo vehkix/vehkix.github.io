@@ -21,6 +21,7 @@ The sign-in panel, admin view, vehicle list, vehicle editor, and sharing tools a
    - [`supabase/06-vehicle-share-preferences.sql`](supabase/06-vehicle-share-preferences.sql)
    - [`supabase/07-vehicle-sharing.sql`](supabase/07-vehicle-sharing.sql)
    - [`supabase/08-storage-policies.sql`](supabase/08-storage-policies.sql)
+     The About page's exact user and vehicle totals use the RPC in `03-vehicles.sql`; re-run that file to install it on an existing Supabase project.
 2. Supabase Auth enforces unique email addresses; the profiles index makes usernames unique regardless of case. Row-level security restricts vehicle records and images to their owner and explicitly authorized recipients. New vehicle shares remain pending until the recipient accepts them; rejecting a share removes access. Owners can grant view, re-share, edit, and delete permissions independently; recipients cannot grant permissions they do not hold. Vehicle owners and admins can transfer ownership to another account; transferring a vehicle revokes its existing shares.
 3. To grant the first admin, create your normal account, then run this in the Supabase SQL Editor with your account email substituted. Admin access is stored in `admin_users` and enforced by RLS; it cannot be self-assigned through the client.
 
