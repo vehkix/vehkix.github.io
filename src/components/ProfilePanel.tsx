@@ -7,17 +7,26 @@ import PasswordInput from './PasswordInput'
 
 interface ProfilePanelProps {
   userId: string
+  accountEmail: string
   initialUsername: string
   onUpdateUsername: (username: string) => Promise<string | null>
   onAvatarChanged: () => void
+  onDeletionConfirmed: () => Promise<string | null>
 }
 
 interface DeletionRequest {
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   requested_at: string
 }
 
-function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChanged }: ProfilePanelProps) {
+function ProfilePanel({
+  userId,
+  accountEmail,
+  initialUsername,
+  onUpdateUsername,
+  onAvatarChanged,
+  onDeletionConfirmed,
+}: ProfilePanelProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [username, setUsername] = useState(initialUsername)
   const [savedUsername, setSavedUsername] = useState(initialUsername)
@@ -28,6 +37,7 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
   const [avatarPath, setAvatarPath] = useState<string | null>(null)
   const [avatar, setAvatar] = useState<{ path: string; url: string } | null>(null)
   const [deletionRequest, setDeletionRequest] = useState<DeletionRequest | null>(null)
+  const [deletionEmail, setDeletionEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
@@ -270,21 +280,30 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
     }
   }
 
-  async function requestDeletion() {
-    if (!supabaseClient || !window.confirm('Send an account deletion request to the administrators? Your account will remain active until they approve it.')) return
+  async function requestDeletion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabaseClient) return
+    if (deletionEmail.trim().toLowerCase() !== accountEmail.trim().toLowerCase()) {
+      setError('Enter the email address associated with your account to confirm deletion.')
+      return
+    }
+
     setBusy(true)
     setMessage(null)
     setError(null)
     try {
-      const { error: requestError } = await supabaseClient.rpc('request_account_deletion')
-      if (requestError) setError('Could not send your deletion request. Try again.')
-      else {
-        const { data, error: loadError } = await supabaseClient.rpc('get_my_deletion_request')
-        if (loadError) setError('Request sent, but its status could not be loaded.')
-        else {
-          setDeletionRequest(data?.[0] as DeletionRequest | undefined ?? null)
-          setMessage('Your request was sent to the administrators.')
-        }
+      const { error: requestError } = await supabaseClient.rpc('request_account_deletion', {
+        confirmation_email: deletionEmail.trim(),
+      })
+      if (requestError) {
+        setError(requestError.message.includes('confirmation email')
+          ? 'Enter the email address associated with your account to confirm deletion.'
+          : 'Could not schedule account deletion. Try again.')
+      } else {
+        setDeletionRequest({ status: 'pending', requested_at: new Date().toISOString() })
+        setMessage('Your account will be permanently deleted within 1 month if you do not log in again.')
+        const signOutError = await onDeletionConfirmed()
+        if (signOutError) setError(signOutError)
       }
     } catch {
       setError('Could not connect to the account service. Try again.')
@@ -421,20 +440,33 @@ function ProfilePanel({ userId, initialUsername, onUpdateUsername, onAvatarChang
             <h3 id="profile-delete-title">Delete account</h3>
             <p>
               {deletionRequest?.status === 'pending'
-                ? 'Your deletion request is waiting for administrator review.'
+                ? 'Your account is scheduled for deletion in one month. Log in again before then to cancel the request.'
                 : deletionRequest?.status === 'rejected'
-                  ? 'Your latest deletion request was declined. You may send another request.'
-                  : 'Send a request to the administrators. Your account stays active until approved.'}
+                  ? 'Your latest deletion request was declined. You may schedule deletion again.'
+                  : deletionRequest?.status === 'cancelled'
+                    ? 'Your previous deletion request was cancelled because you logged in again.'
+                    : 'Confirm your account email to schedule deletion. Logging in again within one month cancels it.'}
             </p>
           </div>
-          <button
-            className="profile-danger-action"
-            type="button"
-            disabled={busy || deletionRequest?.status === 'pending'}
-            onClick={() => { void requestDeletion() }}
-          >
-            Request account deletion
-          </button>
+          {deletionRequest?.status !== 'pending' && (
+            <form className="profile-delete-confirm" onSubmit={(event) => void requestDeletion(event)}>
+              <label className="form-field">
+                <span>Confirm your account email</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={deletionEmail}
+                  onChange={(event) => setDeletionEmail(event.target.value)}
+                  placeholder={accountEmail || 'Email address'}
+                  disabled={busy}
+                />
+              </label>
+              <button className="profile-danger-action" type="submit" disabled={busy}>
+                Confirm account deletion
+              </button>
+            </form>
+          )}
         </section>
       </div>
 

@@ -253,7 +253,7 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
                       type="button"
                       onClick={() => openDeletionRequests(notification)}
                     >
-                      Review request
+                      View request
                     </button>
                   )}
                 </li>

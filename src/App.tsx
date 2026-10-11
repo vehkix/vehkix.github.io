@@ -51,6 +51,7 @@ function App() {
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
   const [profileAvatar, setProfileAvatar] = useState<{ userId: string; url: string } | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [accountDeletionNotice, setAccountDeletionNotice] = useState<string | null>(null)
   const {
     session,
     isReady: authReady,
@@ -71,7 +72,6 @@ function App() {
     error: deletionRequestsError,
     loadRequests: loadDeletionRequests,
     deleteAccount,
-    resolveRequest,
   } = useAdminUserManagement(isAdmin)
   const {
     settings: fieldSettings,
@@ -222,6 +222,21 @@ function App() {
     navigateToView('collection')
   }
 
+  async function handleAccountDeletionConfirmed() {
+    setAccountDeletionNotice('Your account will be permanently deleted within 1 month if you do not log in again.')
+    const message = await signOut()
+    if (message) {
+      setActionError(message)
+      return message
+    }
+    setActionError(null)
+    setShowProfile(false)
+    setShowVehicleForm(false)
+    setEditingVehicle(null)
+    navigateToView('collection')
+    return null
+  }
+
   async function handleDeleteAccount(account: typeof accounts[number]) {
     const message = await deleteAccount(account.id, account.username)
     if (message) {
@@ -229,19 +244,6 @@ function App() {
       return
     }
     if (selectedAdminOwnerId === account.id) setSelectedAdminOwnerId('')
-    setAdminRefreshToken((token) => token + 1)
-    setActionError(null)
-  }
-
-  async function handleResolveDeletionRequest(
-    request: (typeof deletionRequests)[number],
-    approve: boolean,
-  ) {
-    const message = await resolveRequest(request, approve)
-    if (message) {
-      if (message !== 'Account deletion was cancelled.') setActionError(message)
-      return
-    }
     setAdminRefreshToken((token) => token + 1)
     setActionError(null)
   }
@@ -512,13 +514,22 @@ function App() {
         )}
 
         {!session && authReady && supabaseClient && (
+          <>
+          {accountDeletionNotice && (
+            <p className="empty-state" role="status">{accountDeletionNotice}</p>
+          )}
           <Suspense fallback={<p className="empty-state" role="status">Loading sign in…</p>}>
             <AuthPanel
-              onSubmit={submitAuth}
+              onSubmit={async (mode, values) => {
+                const result = await submitAuth(mode, values)
+                if (mode === 'sign-in' && result.kind === 'success') setAccountDeletionNotice(null)
+                return result
+              }}
               onForgotPassword={requestPasswordReset}
               onSignupPending={openEmailConfirmation}
             />
           </Suspense>
+          </>
         )}
 
         {session && isPasswordRecovery && (
@@ -543,9 +554,11 @@ function App() {
           <Suspense fallback={<p className="empty-state" role="status">Loading your profile…</p>}>
             <ProfilePanel
               userId={session.user.id}
+              accountEmail={session.user.email ?? ''}
               initialUsername={username}
               onUpdateUsername={updateUsername}
               onAvatarChanged={() => setProfileAvatarRevision((revision) => revision + 1)}
+              onDeletionConfirmed={handleAccountDeletionConfirmed}
             />
           </Suspense>
         )}
@@ -575,9 +588,6 @@ function App() {
                 setQuery('')
               }}
               onDeleteAccount={(account) => { void handleDeleteAccount(account) }}
-              onResolveDeletionRequest={(request, approve) => {
-                void handleResolveDeletionRequest(request, approve)
-              }}
               onSelectSection={handleAdminSectionChange}
             >
               {adminSection === 'vehicles' && (

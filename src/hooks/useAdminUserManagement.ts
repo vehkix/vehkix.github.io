@@ -59,25 +59,5 @@ export function useAdminUserManagement(isAdmin: boolean) {
     }
   }
 
-  async function resolveRequest(request: AccountDeletionRequest, approve: boolean) {
-    if (!supabaseClient) return 'Supabase is not configured.'
-    if (approve && !window.confirm(
-      `Permanently delete ${request.username}'s account and its vehicles? This action cannot be undone.`,
-    )) return 'Account deletion was cancelled.'
-
-    try {
-      const { error: resolveError } = await supabaseClient.rpc('resolve_account_deletion_request', {
-        target_request_id: request.id,
-        approve_request: approve,
-      })
-      if (resolveError) return `Could not ${approve ? 'approve' : 'reject'} this request: ${resolveError.message}`
-      await loadRequests()
-      return null
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : 'Unknown account service error.'
-      return `Could not connect to the account service: ${detail}`
-    }
-  }
-
-  return { requests, loading, error, loadRequests, deleteAccount, resolveRequest }
+  return { requests, loading, error, loadRequests, deleteAccount }
 }

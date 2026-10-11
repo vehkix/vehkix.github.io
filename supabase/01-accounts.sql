@@ -12,6 +12,7 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists avatar_path text;
+alter table public.profiles add column if not exists active boolean not null default true;
 
 update public.profiles as profile
 set email = auth_user.email
@@ -240,7 +241,8 @@ begin
   end if;
 
   update public.profiles
-  set email = auth_email
+  set email = auth_email,
+      active = true
   where id = current_user_id;
 
   if not found then
@@ -251,11 +253,16 @@ begin
     insert into public.profiles (id, username, email)
     values (current_user_id, auth_username, auth_email)
     on conflict (id) do update
-      set email = excluded.email;
+      set email = excluded.email,
+          active = true;
   end if;
+
+  update public.account_deletion_requests
+  set status = 'cancelled', updated_at = now()
+  where user_id = current_user_id
+    and status = 'pending';
 end;
 $$;
 
 revoke all on function public.sync_my_profile() from public, anon;
 grant execute on function public.sync_my_profile() to authenticated;
-

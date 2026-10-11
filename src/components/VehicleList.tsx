@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { displayValue, formatDate, formatMileage, getDueMessage, getUpcomingDocuments, getVehicleName, getVehicleStatus } from '../lib/vehicle'
 import type { ExistingVehicleImage, Vehicle } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
@@ -73,8 +73,11 @@ function VehicleList({
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
   const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
   const [transferVehicleId, setTransferVehicleId] = useState<string | null>(null)
-  const [openMenuVehicleId, setOpenMenuVehicleId] = useState<string | null>(null)
+  const [openMenu, setOpenMenu] = useState<{ vehicleId: string; location: 'tile' | 'details' } | null>(null)
+  const [menuPlacement, setMenuPlacement] = useState<'above' | 'below'>('below')
   const listRef = useRef<HTMLDivElement>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuPopoverRef = useRef<HTMLDivElement>(null)
   const visibleDetailFields = new Set(
     Object.values(fieldSettings)
       .filter((setting) => setting.show_in_details)
@@ -84,16 +87,44 @@ function VehicleList({
     ? groupVehiclesByOwner(vehicles, ownerAccounts)
     : [{ key: 'collection', username: '', email: null, vehicles }]
 
+  useLayoutEffect(() => {
+    if (!openMenu) return
+
+    const updatePlacement = () => {
+      const trigger = menuTriggerRef.current
+      const popover = menuPopoverRef.current
+      if (!trigger || !popover) return
+
+      popover.style.maxHeight = ''
+      const triggerRect = trigger.getBoundingClientRect()
+      const spaceAbove = triggerRect.top - 12
+      const spaceBelow = window.innerHeight - triggerRect.bottom - 12
+      const menuHeight = popover.getBoundingClientRect().height
+      const placement = spaceBelow < menuHeight ? 'above' : 'below'
+      const availableSpace = placement === 'above' ? spaceAbove : spaceBelow
+      setMenuPlacement(placement)
+      popover.style.maxHeight = `${Math.max(40, Math.min(360, availableSpace - 8))}px`
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', updatePlacement)
+    window.addEventListener('scroll', updatePlacement, true)
+    return () => {
+      window.removeEventListener('resize', updatePlacement)
+      window.removeEventListener('scroll', updatePlacement, true)
+    }
+  }, [openMenu])
+
   useEffect(() => {
-    if (!openMenuVehicleId) return
+    if (!openMenu) return
 
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (event.target instanceof Node && !listRef.current?.contains(event.target)) {
-        setOpenMenuVehicleId(null)
+        setOpenMenu(null)
       }
     }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenMenuVehicleId(null)
+      if (event.key === 'Escape') setOpenMenu(null)
     }
 
     document.addEventListener('pointerdown', closeOnOutsideClick)
@@ -102,7 +133,7 @@ function VehicleList({
       document.removeEventListener('pointerdown', closeOnOutsideClick)
       document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [openMenuVehicleId])
+  }, [openMenu])
 
   if (vehicles.length === 0 && (!showOwner || ownerGroups.length === 0)) {
     return (
@@ -174,6 +205,93 @@ function VehicleList({
         const detailField = (key: VehicleFieldKey, label: string, value: ReactNode) => (
           fieldSettings[key].show_in_details && <div key={key}><dt>{label}</dt><dd>{value}</dd></div>
         )
+        const renderVehicleMenu = (location: 'tile' | 'details') => {
+          const menuOpen = openMenu?.vehicleId === vehicle.id && openMenu.location === location
+          const menuId = `vehicle-menu-${vehicle.id}-${location}`
+          const dismissMenu = () => setOpenMenu(null)
+
+          return (
+            <div className="vehicle-menu">
+              <button
+                ref={menuOpen ? menuTriggerRef : null}
+                className="vehicle-menu-trigger"
+                type="button"
+                aria-label={`More actions for ${vehicleName}`}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                aria-controls={menuId}
+                onClick={() => setOpenMenu(menuOpen ? null : { vehicleId: vehicle.id, location })}
+              >
+                <span aria-hidden="true">⋮</span>
+              </button>
+              {menuOpen && (
+                <div
+                  ref={menuPopoverRef}
+                  className="vehicle-menu-popover"
+                  data-placement={menuPlacement}
+                  id={menuId}
+                  role="menu"
+                  aria-label={`${vehicleName} actions`}
+                >
+                  {vehicle.can_edit && (
+                    <button type="button" role="menuitem" onClick={() => {
+                      dismissMenu()
+                      onEdit(vehicle)
+                    }}>
+                      Edit
+                    </button>
+                  )}
+                  {vehicle.can_share && (
+                    <button type="button" role="menuitem" onClick={() => {
+                      dismissMenu()
+                      setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })
+                    }}>
+                      Share
+                    </button>
+                  )}
+                  <button type="button" role="menuitem" onClick={() => {
+                    dismissMenu()
+                    setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })
+                  }}>
+                    PDF
+                  </button>
+                  {(vehicle.user_id === userId || canTransferAll) && (
+                    <button type="button" role="menuitem" onClick={() => {
+                      dismissMenu()
+                      setTransferVehicleId(vehicle.id)
+                    }}>
+                      Transfer
+                    </button>
+                  )}
+                  {vehicle.can_delete && (
+                    <button
+                      className="delete-action"
+                      type="button"
+                      role="menuitem"
+                      disabled={deleteBusy}
+                      onClick={() => {
+                        dismissMenu()
+                        if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
+                          onDelete(vehicle)
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  {(location === 'details' || isExpanded) && (
+                    <button type="button" role="menuitem" onClick={() => {
+                      dismissMenu()
+                      onToggleExpanded(vehicle.id)
+                    }}>
+                      Close Details
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
 
         return (
           <article className="vehicle-row" key={vehicle.id} role="listitem">
@@ -269,85 +387,7 @@ function VehicleList({
                 <span className="expand-icon" aria-hidden="true" />
                 {isExpanded ? 'Hide details' : 'View details'}
               </button>
-              <div className="vehicle-menu">
-                <button
-                  className="vehicle-menu-trigger"
-                  type="button"
-                  aria-label={`More actions for ${vehicleName}`}
-                  aria-expanded={openMenuVehicleId === vehicle.id}
-                  aria-haspopup="menu"
-                  aria-controls={`vehicle-menu-${vehicle.id}`}
-                  onClick={() => setOpenMenuVehicleId((current) => current === vehicle.id ? null : vehicle.id)}
-                >
-                  <span aria-hidden="true">⋮</span>
-                </button>
-                {openMenuVehicleId === vehicle.id && (
-                  <div className="vehicle-menu-popover" id={`vehicle-menu-${vehicle.id}`} role="menu" aria-label={`${vehicleName} actions`}>
-                    {vehicle.can_edit && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenuVehicleId(null)
-                          onEdit(vehicle)
-                        }}
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {vehicle.can_share && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenuVehicleId(null)
-                          setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })
-                        }}
-                      >
-                        Share
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setOpenMenuVehicleId(null)
-                        setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })
-                      }}
-                    >
-                      Download PDF
-                    </button>
-                    {(vehicle.user_id === userId || canTransferAll) && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenuVehicleId(null)
-                          setTransferVehicleId(vehicle.id)
-                        }}
-                      >
-                        Transfer
-                      </button>
-                    )}
-                    {vehicle.can_delete && (
-                      <button
-                        className="delete-action"
-                        type="button"
-                        role="menuitem"
-                        disabled={deleteBusy}
-                        onClick={() => {
-                          setOpenMenuVehicleId(null)
-                          if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
-                            onDelete(vehicle)
-                          }
-                        }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+              {renderVehicleMenu('tile')}
             </div>
             <section
               className="expanded-details"
@@ -429,18 +469,7 @@ function VehicleList({
                 </dl>
               </div>}
               <div className="vehicle-detail-actions">
-                {vehicle.can_edit && (
-                  <button className="primary-action" type="button" onClick={() => onEdit(vehicle)}>
-                    Edit vehicle
-                  </button>
-                )}
-                <button
-                  className="text-action"
-                  type="button"
-                  onClick={() => setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })}
-                >
-                  Download PDF
-                </button>
+                {renderVehicleMenu('details')}
               </div>
             </section>
               {vehicleDialog?.vehicleId === vehicle.id && (

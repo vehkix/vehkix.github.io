@@ -6,10 +6,16 @@ create table if not exists public.account_deletion_requests (
   user_id uuid references auth.users (id) on delete set null,
   requested_username text not null,
   status text not null default 'pending'
-    check (status in ('pending', 'approved', 'rejected')),
+    check (status in ('pending', 'approved', 'rejected', 'cancelled')),
   requested_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.account_deletion_requests
+  drop constraint if exists account_deletion_requests_status_check;
+alter table public.account_deletion_requests
+  add constraint account_deletion_requests_status_check
+  check (status in ('pending', 'approved', 'rejected', 'cancelled'));
 
 create unique index if not exists account_deletion_requests_pending_user
   on public.account_deletion_requests (user_id)

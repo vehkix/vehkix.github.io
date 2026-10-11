@@ -285,17 +285,26 @@
 }
 
 .vehicle-menu-popover {
+  box-sizing: border-box;
   position: absolute;
   z-index: 5;
   top: calc(100% + 4px);
   right: 0;
   display: grid;
   min-width: 148px;
+  max-height: min(60vh, 360px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 3px;
   background: var(--white);
   box-shadow: 0 8px 20px rgb(22 31 28 / 12%);
+}
+
+.vehicle-menu-popover[data-placement='above'] {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .vehicle-menu-popover button {

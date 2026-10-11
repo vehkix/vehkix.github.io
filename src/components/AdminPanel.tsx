@@ -25,7 +25,6 @@ interface AdminPanelProps {
   onSelectAccount: (userId: string) => void
   onManageAccount: (account: AdminAccount) => void
   onDeleteAccount: (account: AdminAccount) => void
-  onResolveDeletionRequest: (request: AccountDeletionRequest, approve: boolean) => void
   children?: ReactNode
 }
 
@@ -49,7 +48,6 @@ function AdminPanel({
   onSelectAccount,
   onManageAccount,
   onDeleteAccount,
-  onResolveDeletionRequest,
   children,
 }: AdminPanelProps) {
   const [savingField, setSavingField] = useState<string | null>(null)
@@ -242,7 +240,7 @@ function AdminPanel({
                 <p className="eyebrow">ACCOUNT MANAGEMENT</p>
                 <h2 id="admin-deletion-requests-title">Deletion requests</h2>
               </div>
-              <span>{deletionRequests.length} pending</span>
+              <span>{deletionRequests.length} scheduled</span>
             </header>
             {deletionRequestsError ? (
               <p className="admin-settings-message error-state" role="alert">{deletionRequestsError}</p>
@@ -254,21 +252,13 @@ function AdminPanel({
                   <li key={request.id}>
                     <span>
                       <strong>{request.username}</strong>
-                      <small>Requested {new Date(request.requested_at).toLocaleString()}</small>
-                    </span>
-                    <span className="admin-deletion-actions">
-                      <button type="button" className="admin-delete-action" onClick={() => onResolveDeletionRequest(request, false)}>
-                        Reject
-                      </button>
-                      <button type="button" className="admin-delete-action is-danger" onClick={() => onResolveDeletionRequest(request, true)}>
-                        Approve deletion
-                      </button>
+                      <small>Scheduled for deletion · Requested {new Date(request.requested_at).toLocaleString()}</small>
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="admin-settings-message">There are no pending account deletion requests.</p>
+              <p className="admin-settings-message">There are no accounts scheduled for deletion.</p>
             )}
           </section>
         )}

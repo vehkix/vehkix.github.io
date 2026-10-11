@@ -396,8 +396,7 @@
   text-align: right;
 }
 
-.admin-account-actions,
-.admin-deletion-actions {
+.admin-account-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
