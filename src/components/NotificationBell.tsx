@@ -25,6 +25,8 @@ function getNotificationMessage(notification: AppNotification) {
   const vehicle = notification.vehicle_label || 'vehicle'
   switch (notification.kind) {
     case 'vehicle_share_received': return `${actor} shared ${vehicle} with you.`
+    case 'vehicle_share_received_accepted': return `You accepted ${actor}’s share of ${vehicle}.`
+    case 'vehicle_share_received_rejected': return `You rejected ${actor}’s share of ${vehicle}.`
     case 'vehicle_share_sent': return `You shared ${vehicle} with ${actor}.`
     case 'vehicle_share_accepted': return `${actor} accepted your share of ${vehicle}.`
     case 'vehicle_share_rejected': return `${actor} rejected your share of ${vehicle}.`
@@ -36,6 +38,7 @@ function getNotificationMessage(notification: AppNotification) {
 
 function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareResponded }: NotificationBellProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const latestLoadId = useRef(0)
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,18 +47,24 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
 
   const loadNotifications = useCallback(async (): Promise<AppNotification[]> => {
     if (!supabaseClient) return []
+    const loadId = ++latestLoadId.current
     try {
       const { data, error: loadError } = await supabaseClient.rpc('list_my_notifications')
       if (loadError) {
-        setError('Could not load notifications. Run the latest user-account SQL in Supabase.')
+        if (loadId === latestLoadId.current) {
+          setError('Could not load notifications. Run the latest user-account SQL in Supabase.')
+        }
         return []
       }
-      setError(null)
       const loaded = (data ?? []) as AppNotification[]
+      if (loadId !== latestLoadId.current) return loaded
+      setError(null)
       setNotifications(loaded)
       return loaded
     } catch {
-      setError('Could not load notifications. Run the latest user-account SQL in Supabase.')
+      if (loadId === latestLoadId.current) {
+        setError('Could not load notifications. Run the latest user-account SQL in Supabase.')
+      }
       return []
     }
   }, [])
@@ -99,20 +108,22 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
     const client = supabaseClient
     if (!client || unread.length === 0) return
 
+    const readAt = new Date().toISOString()
+    setNotifications((current) => current.map((notification) =>
+      unread.some((item) => item.id === notification.id)
+        ? { ...notification, read_at: readAt }
+        : notification,
+    ))
     try {
       const results = await Promise.all(unread.map((notification) =>
         client.rpc('mark_my_notification_read', { target_notification_id: notification.id }),
       ))
       if (results.some((result) => result.error)) {
+        await loadNotifications()
         setError('Some notifications could not be marked as read.')
-      } else {
-        setNotifications((current) => current.map((notification) =>
-          unread.some((item) => item.id === notification.id)
-            ? { ...notification, read_at: new Date().toISOString() }
-            : notification,
-        ))
       }
     } catch {
+      await loadNotifications()
       setError('Some notifications could not be marked as read.')
     }
   }
@@ -129,6 +140,16 @@ function NotificationBell({ userId, onOpenDeletionRequests, onVehicleShareRespon
       if (responseError) {
         setError('Could not respond to this share. It may have already been handled.')
       } else {
+        setNotifications((current) => current.map((item) =>
+          item.id === notification.id
+            ? {
+                ...item,
+                kind: accept ? 'vehicle_share_received_accepted' : 'vehicle_share_received_rejected',
+                share_id: null,
+                read_at: new Date().toISOString(),
+              }
+            : item,
+        ))
         onVehicleShareResponded()
         await loadNotifications()
       }

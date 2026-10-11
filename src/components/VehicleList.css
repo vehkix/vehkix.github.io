@@ -822,7 +822,9 @@
   .row-actions {
     grid-column: 1 / -1;
     flex-wrap: wrap;
-    justify-self: start;
+    justify-self: stretch;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .details-toggle {

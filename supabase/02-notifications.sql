@@ -23,6 +23,7 @@ create table if not exists public.app_notifications (
   recipient_id uuid references auth.users (id) on delete cascade,
   kind text not null check (kind in (
     'vehicle_share_sent', 'vehicle_share_received',
+    'vehicle_share_received_accepted', 'vehicle_share_received_rejected',
     'vehicle_share_accepted', 'vehicle_share_rejected',
     'account_deletion_requested', 'account_deletion_rejected'
   )),
@@ -39,4 +40,3 @@ create index if not exists app_notifications_recipient_created_idx
 
 alter table public.app_notifications enable row level security;
 revoke all on public.app_notifications from anon, authenticated;
-

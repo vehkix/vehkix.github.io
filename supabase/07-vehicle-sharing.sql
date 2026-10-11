@@ -25,6 +25,17 @@ alter table public.app_notifications
   add constraint app_notifications_share_id_fkey
   foreign key (share_id) references public.user_vehicle_shares (id) on delete set null;
 
+alter table public.app_notifications
+  drop constraint if exists app_notifications_kind_check;
+alter table public.app_notifications
+  add constraint app_notifications_kind_check
+  check (kind in (
+    'vehicle_share_sent', 'vehicle_share_received',
+    'vehicle_share_received_accepted', 'vehicle_share_received_rejected',
+    'vehicle_share_accepted', 'vehicle_share_rejected',
+    'account_deletion_requested', 'account_deletion_rejected'
+  ));
+
 alter table public.user_vehicle_shares
   add column if not exists status text not null default 'accepted'
   check (status in ('pending', 'accepted', 'rejected'));
@@ -297,7 +308,12 @@ begin
   where id = target_share_id;
 
   update public.app_notifications
-  set read_at = now()
+  set kind = case when accept_share
+      then 'vehicle_share_received_accepted'
+      else 'vehicle_share_received_rejected'
+    end,
+    read_at = now(),
+    share_id = null
   where recipient_id = (select auth.uid())
     and kind = 'vehicle_share_received'
     and share_id = target_share_id;
@@ -463,4 +479,3 @@ create policy profiles_read_shared_vehicle_owners
         and (select public.user_can_vehicle(vehicle.id, 'view'))
     )
   );
-
