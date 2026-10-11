@@ -823,7 +823,7 @@
     grid-column: 1 / -1;
     flex-wrap: wrap;
     justify-self: stretch;
-    justify-content: space-between;
+    justify-content: flex-end;
     width: 100%;
   }
 
