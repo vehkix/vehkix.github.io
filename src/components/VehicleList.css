@@ -247,12 +247,84 @@
 .row-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   justify-self: end;
   white-space: nowrap;
 }
 
-.row-actions .delete-action {
+.vehicle-menu {
+  position: relative;
+}
+
+.vehicle-menu-trigger {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.vehicle-menu-trigger:hover,
+.vehicle-menu-trigger[aria-expanded='true'] {
+  border-color: var(--line);
+  color: var(--ink);
+  background: var(--white);
+}
+
+.vehicle-menu-trigger:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.vehicle-menu-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 148px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--white);
+  box-shadow: 0 8px 20px rgb(22 31 28 / 12%);
+}
+
+.vehicle-menu-popover button {
+  padding: 9px 10px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.vehicle-menu-popover button + button {
+  border-top: 1px solid var(--line);
+}
+
+.vehicle-menu-popover button:hover,
+.vehicle-menu-popover button:focus-visible {
+  background: var(--page);
+  outline: none;
+}
+
+.vehicle-menu-popover button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.vehicle-menu-popover .delete-action {
   color: #a3342e;
 }
 

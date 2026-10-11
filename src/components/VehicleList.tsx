@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { displayValue, formatDate, formatMileage, getDueMessage, getUpcomingDocuments, getVehicleName, getVehicleStatus } from '../lib/vehicle'
 import type { ExistingVehicleImage, Vehicle } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
@@ -73,6 +73,8 @@ function VehicleList({
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
   const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
   const [transferVehicleId, setTransferVehicleId] = useState<string | null>(null)
+  const [openMenuVehicleId, setOpenMenuVehicleId] = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const visibleDetailFields = new Set(
     Object.values(fieldSettings)
       .filter((setting) => setting.show_in_details)
@@ -81,6 +83,26 @@ function VehicleList({
   const ownerGroups: VehicleOwnerGroup[] = showOwner
     ? groupVehiclesByOwner(vehicles, ownerAccounts)
     : [{ key: 'collection', username: '', email: null, vehicles }]
+
+  useEffect(() => {
+    if (!openMenuVehicleId) return
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !listRef.current?.contains(event.target)) {
+        setOpenMenuVehicleId(null)
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenMenuVehicleId(null)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [openMenuVehicleId])
 
   if (vehicles.length === 0 && (!showOwner || ownerGroups.length === 0)) {
     return (
@@ -95,7 +117,7 @@ function VehicleList({
   }
 
   return (
-    <div className="vehicle-list" aria-label={showOwner ? 'All user vehicles' : 'My vehicles'}>
+    <div ref={listRef} className="vehicle-list" aria-label={showOwner ? 'All user vehicles' : 'My vehicles'}>
       {ownerGroups.map((group) => (
         <section
           className={showOwner ? 'vehicle-owner-group' : undefined}
@@ -237,34 +259,6 @@ function VehicleList({
               {dueMessage && <span className={`due-countdown ${status.className}`}>{dueMessage}</span>}
             </div>
             <div className="row-actions">
-              {vehicle.can_share && (
-                <button className="text-action" type="button" onClick={() => setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })}>
-                  Share
-                </button>
-              )}
-              {vehicle.can_delete && (
-                <button
-                  className="text-action delete-action"
-                  type="button"
-                  disabled={deleteBusy}
-                  onClick={() => {
-                    if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
-                      onDelete(vehicle)
-                    }
-                  }}
-                >
-                  Delete
-                </button>
-              )}
-              {(vehicle.user_id === userId || canTransferAll) && (
-                <button
-                  className="text-action"
-                  type="button"
-                  onClick={() => setTransferVehicleId(vehicle.id)}
-                >
-                  Transfer
-                </button>
-              )}
               <button
                 className="details-toggle"
                 type="button"
@@ -275,6 +269,85 @@ function VehicleList({
                 <span className="expand-icon" aria-hidden="true" />
                 {isExpanded ? 'Hide details' : 'View details'}
               </button>
+              <div className="vehicle-menu">
+                <button
+                  className="vehicle-menu-trigger"
+                  type="button"
+                  aria-label={`More actions for ${vehicleName}`}
+                  aria-expanded={openMenuVehicleId === vehicle.id}
+                  aria-haspopup="menu"
+                  aria-controls={`vehicle-menu-${vehicle.id}`}
+                  onClick={() => setOpenMenuVehicleId((current) => current === vehicle.id ? null : vehicle.id)}
+                >
+                  <span aria-hidden="true">⋮</span>
+                </button>
+                {openMenuVehicleId === vehicle.id && (
+                  <div className="vehicle-menu-popover" id={`vehicle-menu-${vehicle.id}`} role="menu" aria-label={`${vehicleName} actions`}>
+                    {vehicle.can_edit && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenMenuVehicleId(null)
+                          onEdit(vehicle)
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {vehicle.can_share && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenMenuVehicleId(null)
+                          setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })
+                        }}
+                      >
+                        Share
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setOpenMenuVehicleId(null)
+                        setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                    {(vehicle.user_id === userId || canTransferAll) && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenMenuVehicleId(null)
+                          setTransferVehicleId(vehicle.id)
+                        }}
+                      >
+                        Transfer
+                      </button>
+                    )}
+                    {vehicle.can_delete && (
+                      <button
+                        className="delete-action"
+                        type="button"
+                        role="menuitem"
+                        disabled={deleteBusy}
+                        onClick={() => {
+                          setOpenMenuVehicleId(null)
+                          if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
+                            onDelete(vehicle)
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <section
               className="expanded-details"
@@ -366,7 +439,7 @@ function VehicleList({
                   type="button"
                   onClick={() => setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })}
                 >
-                  Print / PDF
+                  Download PDF
                 </button>
               </div>
             </section>
