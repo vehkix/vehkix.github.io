@@ -253,6 +253,37 @@
   gap: 14px 20px;
 }
 
+.registration-input-group {
+  display: flex;
+  min-width: 0;
+}
+
+.registration-input-group input {
+  flex: 1 1 auto;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  text-transform: uppercase;
+}
+
+.registration-input-group select {
+  max-width: 112px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 2px 2px 0;
+  color: var(--ink);
+  background: var(--page);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.registration-input-group select:focus-visible {
+  position: relative;
+  outline: 2px solid rgb(42 91 67 / 25%);
+  outline-offset: -2px;
+}
+
 .form-actions {
   justify-content: flex-end;
 }

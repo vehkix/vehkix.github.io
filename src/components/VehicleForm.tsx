@@ -25,6 +25,18 @@ interface SelectedImage {
   previewUrl: string
 }
 
+type RegistrationSeparator = '-' | ' ' | '/'
+
+const registrationSeparators: { value: RegistrationSeparator; label: string }[] = [
+  { value: '-', label: 'Hyphen (-)' },
+  { value: ' ', label: 'Space' },
+  { value: '/', label: 'Slash (/)' },
+]
+
+function formatRegistrationNumber(value: string, separator: RegistrationSeparator) {
+  return (value.toUpperCase().match(/[A-Z]+|\d+/g) ?? []).join(separator)
+}
+
 const emptyDraft: VehicleDraft = {
   vehicle_number: '',
   name: '',
@@ -81,6 +93,7 @@ function VehicleForm({
   const previewUrls = useRef(new Set<string>())
   const [savedDraft] = useState(() => loadSavedDraft(draftStorageKey))
   const [draft, setDraft] = useState<VehicleDraft>(() => initialDraft ?? savedDraft.draft)
+  const [registrationSeparator, setRegistrationSeparator] = useState<RegistrationSeparator>('-')
   const originalDraft = useRef(draft)
   const [primaryImageKey, setPrimaryImageKey] = useState(
     initialPrimaryImagePath ?? existingImages[0]?.path ?? '',
@@ -109,8 +122,15 @@ function VehicleForm({
     previewUrls.current.clear()
   }, [])
 
-  function updateField(field: keyof VehicleDraft, value: string) {
-    setDraft((current) => ({ ...current, [field]: value }))
+  function updateField(
+    field: keyof VehicleDraft,
+    value: string,
+    separator = registrationSeparator,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      [field]: field === 'vehicle_number' ? formatRegistrationNumber(value, separator) : value,
+    }))
   }
 
   function saveAsDraft() {
@@ -311,7 +331,33 @@ function VehicleForm({
       {hasVisibleFormField(['vehicle_number', 'company', 'model', 'year', 'taken_date']) && <fieldset className="vehicle-fieldset">
         <legend>Vehicle information</legend>
         <div className="form-grid">
-          {field('Registration number', 'vehicle_number')}
+          {fieldSettings.vehicle_number.show_in_form && (
+            <label className="form-field" key="vehicle_number">
+              <span>Registration number</span>
+              <span className="registration-input-group">
+                <input
+                  type="text"
+                  name="vehicle_number"
+                  value={draft.vehicle_number}
+                  onChange={(event) => updateField('vehicle_number', event.target.value)}
+                />
+                <select
+                  aria-label="Registration number separator"
+                  value={registrationSeparator}
+                  onChange={(event) => {
+                    const separator = registrationSeparators.find((option) => option.value === event.target.value)?.value
+                    if (!separator) return
+                    setRegistrationSeparator(separator)
+                    updateField('vehicle_number', draft.vehicle_number, separator)
+                  }}
+                >
+                  {registrationSeparators.map((separator) => (
+                    <option key={separator.label} value={separator.value}>{separator.label}</option>
+                  ))}
+                </select>
+              </span>
+            </label>
+          )}
           {field('Make', 'company')}
           {field('Model', 'model')}
           {field('Year', 'year', 'number')}

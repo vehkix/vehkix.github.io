@@ -66,7 +66,7 @@ function toDatabasePayload(draft: VehicleDraft, username: string | null) {
   const nullableNumber = (value: string) => value.trim() ? Number(value) : null
 
   return {
-    vehicle_number: nullableText(draft.vehicle_number),
+    vehicle_number: nullableText(draft.vehicle_number.toUpperCase()),
     name: nullableText(getVehicleName(draft.company, draft.model)),
     model: nullableText(draft.model),
     company: nullableText(draft.company),
@@ -341,7 +341,7 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
         }
         console.error('Vehicle save failed:', result.error)
         if (result.error.code === '42501') {
-          return 'The database denied permission to save this vehicle. Check the latest user-account setup SQL and try again.'
+          return `The database denied permission to save this vehicle: ${result.error.message}. Run the latest user-account setup SQL and try again.`
         }
         if (['PGRST204', '42P01', '42703'].includes(result.error.code ?? '')) {
           return 'The vehicle database schema is out of date. Run the latest user-account setup SQL and try again.'

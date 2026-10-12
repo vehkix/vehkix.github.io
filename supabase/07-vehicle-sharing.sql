@@ -444,7 +444,17 @@ $$;
 revoke all on function public.resolve_vehicle_transfer_recipient(uuid, text) from public, anon;
 grant execute on function public.resolve_vehicle_transfer_recipient(uuid, text) to authenticated;
 
+drop policy if exists user_vehicles_insert_own on public.user_vehicles;
+create policy user_vehicles_insert_own
+  on public.user_vehicles for insert to authenticated
+  with check (user_id = (select auth.uid()));
+grant select, insert, update, delete on public.user_vehicles to authenticated;
+
 drop policy if exists user_vehicles_read_own on public.user_vehicles;
+create policy user_vehicles_read_own
+  on public.user_vehicles for select to authenticated
+  using (user_id = (select auth.uid()));
+
 drop policy if exists user_vehicles_read_shared on public.user_vehicles;
 create policy user_vehicles_read_shared
   on public.user_vehicles for select to authenticated
