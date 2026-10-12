@@ -99,8 +99,8 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
         <p className="eyebrow">ABOUT VEHKIX</p>
         <h1 id="about-title">A clearer way to care for every vehicle.</h1>
         <p>
-          Vehkix helps people keep vehicle details, maintenance, and important documents
-          together—so caring for a vehicle feels simpler and more organized.
+          Keep your vehicles, important dates, photos, and shared records organized in one
+          place—so it is easier to know what needs attention and who can help.
         </p>
         <a
           className="primary-action"
@@ -118,9 +118,9 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
         <p className="eyebrow">WHY VEH KIX</p>
         <h2 id="about-why-title">Vehicle information should be easy to find when it matters.</h2>
         <p>
-          Service dates, insurance renewals, registration details, photos, and notes can
-          end up scattered across papers, messages, and memory. Vehkix brings those details
-          into one organized place and makes it easier to stay ahead of the next task.
+          Service history, insurance and registration renewals, photos, and notes can get
+          scattered across papers, messages, and memory. Vehkix brings those records
+          together and helps make upcoming and overdue items easier to spot.
         </p>
       </section>
 
@@ -153,33 +153,72 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
 
       <section className="about-features" aria-labelledby="about-features-title">
         <div className="about-section-heading">
-          <p className="eyebrow">MADE FOR EVERYDAY OWNERSHIP</p>
-          <h2 id="about-features-title">The details that help you stay prepared.</h2>
+          <p className="eyebrow">A GARAGE THAT WORKS AROUND YOU</p>
+          <h2 id="about-features-title">Useful tools for the whole life of your vehicle.</h2>
         </div>
         <ul>
           <li>
-            <h3>One organized vehicle record</h3>
-            <p>Keep vehicle details, notes, photos, and ownership information together.</p>
+            <h3>Your vehicles, together</h3>
+            <p>
+              Keep a private garage of vehicles you own and see vehicles other people have
+              shared with you, in separate collection tabs.
+            </p>
           </li>
           <li>
-            <h3>Maintenance and document dates</h3>
-            <p>Track service, insurance, registration, and other important dates in one place.</p>
+            <h3>Detailed vehicle records</h3>
+            <p>
+              Organize registration details, make and model, service history and mileage,
+              PUCC, insurance, tax and registration validity, notes, and photos.
+            </p>
           </li>
           <li>
-            <h3>A quick view of what needs attention</h3>
-            <p>See upcoming items and overdue tasks without searching through old records.</p>
+            <h3>Stay ahead of important dates</h3>
+            <p>
+              See upcoming and overdue service or document renewals, with a quick view of
+              items that are due soon.
+            </p>
           </li>
           <li>
-            <h3>Share with the right people</h3>
-            <p>Give another Vehkix user access to a vehicle when they help care for it.</p>
+            <h3>Share with people you trust</h3>
+            <p>
+              Invite another Vehkix account and choose its access to a vehicle. New shares
+              can be accepted or rejected by the recipient, and access can be managed later.
+            </p>
           </li>
           <li>
-            <h3>Useful records when you need them</h3>
-            <p>Choose the details to print or save as a PDF for your own reference.</p>
+            <h3>Read-only links for guests</h3>
+            <p>
+              Create revocable links for people without an account, choose which details
+              and photos they can see, and keep the shared vehicle read-only.
+            </p>
           </li>
           <li>
-            <h3>A profile for your account</h3>
-            <p>Personalize your account and manage your vehicle collection in one place.</p>
+            <h3>Notifications that keep you in the loop</h3>
+            <p>
+              Get updates about vehicle sharing and respond to incoming access requests
+              from your notification center.
+            </p>
+          </li>
+          <li>
+            <h3>Print or save a tailored record</h3>
+            <p>
+              Choose the vehicle details to include in a clean printout or save as a PDF
+              for your own records.
+            </p>
+          </li>
+          <li>
+            <h3>Your account, under your control</h3>
+            <p>
+              Update your profile photo and username, change your password, review vehicle
+              shares, and manage account deletion from your profile.
+            </p>
+          </li>
+          <li>
+            <h3>Emergency numbers close at hand</h3>
+            <p>
+              Browse Kerala-priority and India-wide helplines, search by service or number,
+              and tap a contact to call from the <a href="#emergency-contacts">emergency contacts directory</a>.
+            </p>
           </li>
         </ul>
       </section>
