@@ -5,6 +5,7 @@ type PreferenceSaveState = 'saved' | 'saving' | 'error'
 
 interface SharePreferenceState {
   userId: string
+  preference: 'print' | 'public'
   selectedFieldIds: string[]
   loaded: boolean
   dirty: boolean
@@ -20,9 +21,15 @@ function defaultSelection(fieldIds: string[]) {
   return fieldIds.filter((fieldId) => fieldId !== 'print_timestamp')
 }
 
-export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
+export function useSharePreferences(
+  userId: string,
+  allowedFieldIds: string[],
+  preference: 'print' | 'public' = 'print',
+) {
   const allowedKey = allowedFieldIds.join('|')
   const currentAllowedFieldIds = allowedKey ? allowedKey.split('|') : []
+  const preferenceColumn = preference === 'public' ? 'public_share_field_keys' : 'share_field_keys'
+  const preferenceLabel = preference === 'public' ? 'read-only share' : 'print'
   const [state, setState] = useState<SharePreferenceState | null>(null)
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
 
@@ -35,7 +42,7 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
     async function loadPreferences() {
       const { data, error: queryError } = await client
         .from('user_vehicle_share_preferences')
-        .select('share_field_keys')
+        .select(preferenceColumn)
         .eq('user_id', userId)
         .maybeSingle()
 
@@ -43,18 +50,22 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
       if (queryError) {
         setState({
           userId,
+          preference,
           selectedFieldIds: defaultSelection(allowedIdsForRequest),
           loaded: true,
           dirty: false,
           saveState: 'error',
-          error: 'Could not load your saved print choices. Run the latest user-account SQL setup.',
+          error: `Could not load your saved ${preferenceLabel} choices. Run the latest user-account SQL setup.`,
         })
         return
       }
 
-      const saved = data?.share_field_keys
+      const saved = preference === 'public'
+        ? data && 'public_share_field_keys' in data ? data.public_share_field_keys : undefined
+        : data && 'share_field_keys' in data ? data.share_field_keys : undefined
       setState({
         userId,
+        preference,
         selectedFieldIds: saved ?? defaultSelection(allowedIdsForRequest),
         loaded: true,
         dirty: false,
@@ -67,21 +78,28 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
       if (!current) return
       setState({
         userId,
+        preference,
         selectedFieldIds: defaultSelection(allowedIdsForRequest),
         loaded: true,
         dirty: false,
         saveState: 'error',
-        error: 'Could not load your saved print choices.',
+        error: `Could not load your saved ${preferenceLabel} choices.`,
       })
     })
 
     return () => {
       current = false
     }
-  }, [allowedKey, userId])
+  }, [allowedKey, preference, preferenceColumn, preferenceLabel, userId])
 
   useEffect(() => {
-    if (state?.userId !== userId || !state.loaded || !state.dirty || !supabaseClient) return
+    if (
+      state?.userId !== userId
+      || state.preference !== preference
+      || !state.loaded
+      || !state.dirty
+      || !supabaseClient
+    ) return
     const client = supabaseClient
     const selectionToSave = [...state.selectedFieldIds]
     const timeout = window.setTimeout(() => {
@@ -90,7 +108,7 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
           .from('user_vehicle_share_preferences')
           .upsert({
             user_id: userId,
-            share_field_keys: selectionToSave,
+            [preferenceColumn]: selectionToSave,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
         if (saveError) throw saveError
@@ -114,20 +132,33 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
             ...current,
             dirty: !isLatestSelection,
             saveState: isLatestSelection ? 'error' : 'saving',
-            error: isLatestSelection ? 'Could not save your print choices.' : null,
+            error: isLatestSelection ? `Could not save your ${preferenceLabel} choices.` : null,
           }
         }),
       )
     }, 400)
     return () => window.clearTimeout(timeout)
-  }, [state?.dirty, state?.loaded, state?.selectedFieldIds, state?.userId, userId])
+  }, [
+    preference,
+    preferenceColumn,
+    preferenceLabel,
+    state?.dirty,
+    state?.loaded,
+    state?.preference,
+    state?.selectedFieldIds,
+    state?.userId,
+    userId,
+  ])
 
   function updateSelection(update: (current: string[]) => string[]) {
     setState((current) => {
-      const currentUserState = current?.userId === userId ? current : null
+      const currentUserState = current?.userId === userId && current.preference === preference
+        ? current
+        : null
       const selectedFieldIds = update(currentUserState?.selectedFieldIds ?? defaultSelection(currentAllowedFieldIds))
       return {
         userId,
+        preference,
         selectedFieldIds,
         loaded: currentUserState?.loaded ?? false,
         dirty: true,
@@ -137,7 +168,7 @@ export function useSharePreferences(userId: string, allowedFieldIds: string[]) {
     })
   }
 
-  const currentState = state?.userId === userId ? state : null
+  const currentState = state?.userId === userId && state.preference === preference ? state : null
   const allowed = new Set(currentAllowedFieldIds)
   return {
     selectedFieldIds: (currentState?.selectedFieldIds ?? currentAllowedFieldIds)

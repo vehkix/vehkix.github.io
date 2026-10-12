@@ -31,6 +31,15 @@ interface AccountVehicleShare {
 
 type ProfileSection = 'settings' | 'sharing'
 
+const avatarMimeTypes: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+}
+
 function ProfilePanel({
   userId,
   accountEmail,
@@ -226,8 +235,12 @@ function ProfilePanel({
 
   async function uploadAvatar(file: File) {
     if (!supabaseClient) return
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Choose a JPEG, PNG, or WebP image.')
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+    const contentType = Object.values(avatarMimeTypes).includes(file.type)
+      ? file.type
+      : avatarMimeTypes[extension]
+    if (!contentType || !Object.values(avatarMimeTypes).includes(contentType)) {
+      setError('Choose a JPEG, PNG, WebP, or HEIC image.')
       return
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -243,7 +256,7 @@ function ProfilePanel({
       const path = `${userId}/${crypto.randomUUID()}`
       const { error: uploadError } = await client.storage
         .from('user-profile-images')
-        .upload(path, file, { contentType: file.type })
+        .upload(path, file, { contentType })
       if (uploadError) {
         setError('Could not upload your profile photo. Check the Supabase storage setup.')
         return
@@ -366,7 +379,7 @@ function ProfilePanel({
             ref={avatarInputRef}
             className="profile-photo-input"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             disabled={busy}
             onChange={(event) => {
               const file = event.target.files?.[0]

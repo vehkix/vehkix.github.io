@@ -412,6 +412,125 @@
   backdrop-filter: blur(2px);
 }
 
+.vehicle-public-links {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.vehicle-public-link-toggle {
+  margin-top: 12px;
+}
+
+.vehicle-public-link-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vehicle-public-links h3 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-family: var(--display);
+}
+
+.vehicle-public-links > p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.vehicle-public-link-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.vehicle-public-link-fields fieldset {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--page);
+}
+
+.vehicle-public-link-fields legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vehicle-public-link-fields label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 7px 0;
+  font-size: 13px;
+}
+
+.vehicle-public-link-fields input {
+  margin-top: 3px;
+  accent-color: var(--green);
+}
+
+.vehicle-public-link-error {
+  color: #a3342e;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-public-link-status {
+  color: var(--green);
+}
+
+.vehicle-public-link-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vehicle-public-link-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.vehicle-public-link-preview {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+  background: var(--page);
+}
+
+.vehicle-public-link-preview > span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vehicle-public-link-preview > a {
+  display: block;
+  color: var(--ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-decoration-color: var(--line);
+  text-underline-offset: 2px;
+}
+
+.vehicle-public-link-preview > a:hover {
+  color: var(--green);
+  text-decoration-color: currentcolor;
+}
+
 .vehicle-share-exit-backdrop {
   position: fixed;
   z-index: 2;

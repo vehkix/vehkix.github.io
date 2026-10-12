@@ -17,18 +17,28 @@ import './styles/page.css'
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
+const EmergencyContactsPage = lazy(() => import('./components/EmergencyContactsPage'))
 const EmailConfirmationPage = lazy(() => import('./components/EmailConfirmationPage'))
 const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
 const ProfilePanel = lazy(() => import('./components/ProfilePanel'))
+const PublicVehicleSharePage = lazy(() => import('./components/PublicVehicleSharePage'))
 const VehicleForm = lazy(() => import('./components/VehicleForm'))
 const VehicleList = lazy(() => import('./components/VehicleList'))
 
 function App() {
+  const [publicShareToken, setPublicShareToken] = useState(() =>
+    new URLSearchParams(window.location.search).get('s')
+      ?? new URLSearchParams(window.location.search).get('share'),
+  )
+  const publicShareView = Boolean(publicShareToken)
   const [activeView, setActiveView] = useState<'collection' | 'admin'>(() =>
     window.location.hash === '#admin' ? 'admin' : 'collection',
   )
   const [showAbout, setShowAbout] = useState(() => window.location.hash === '#about-vehkix')
+  const [showEmergencyContacts, setShowEmergencyContacts] = useState(() =>
+    window.location.hash === '#emergency-contacts',
+  )
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(() =>
     new URLSearchParams(window.location.search).has('email-confirmation'),
   )
@@ -65,7 +75,9 @@ function App() {
     updateUsername,
     signOut,
   } = useAuthSession()
-  const { isAdmin, loading: adminAccessLoading, error: adminAccessError } = useAdminAccess(session)
+  const { isAdmin, loading: adminAccessLoading, error: adminAccessError } = useAdminAccess(
+    publicShareView ? null : session,
+  )
   const {
     requests: deletionRequests,
     loading: deletionRequestsLoading,
@@ -78,9 +90,9 @@ function App() {
     loading: fieldSettingsLoading,
     error: fieldSettingsError,
     updateSetting: updateFieldSetting,
-  } = useVehicleFieldSettings(session?.user.id, isAdmin)
-  const adminView = activeView === 'admin' && isAdmin && !isPasswordRecovery && !showProfile
-  const collectionView = !isPasswordRecovery && !showProfile && (activeView !== 'admin'
+  } = useVehicleFieldSettings(publicShareView ? undefined : session?.user.id, isAdmin)
+  const adminView = !publicShareView && activeView === 'admin' && isAdmin && !isPasswordRecovery && !showProfile
+  const collectionView = !publicShareView && !isPasswordRecovery && !showProfile && (activeView !== 'admin'
     || (Boolean(session) && !adminAccessLoading && !isAdmin))
   const {
     vehicles: vehicleRecords,
@@ -91,14 +103,14 @@ function App() {
     accounts,
     saveVehicle,
     deleteVehicle,
-  } = useMyVehicles(session, adminView, adminRefreshToken)
+  } = useMyVehicles(publicShareView ? null : session, adminView, adminRefreshToken)
 
   useLayoutEffect(() => {
     if (showAbout) window.scrollTo(0, 0)
   }, [showAbout])
 
   useEffect(() => {
-    if (!supabaseClient || !session?.user.id) return
+    if (publicShareView || !supabaseClient || !session?.user.id) return
     const client = supabaseClient
     const activeUserId = session.user.id
     let current = true
@@ -133,12 +145,15 @@ function App() {
       })
 
     return () => { current = false }
-  }, [session?.user.id, profileAvatarRevision])
+  }, [session?.user.id, profileAvatarRevision, publicShareView])
 
   useEffect(() => {
     function syncViewFromHash() {
+      const searchParams = new URLSearchParams(window.location.search)
+      setPublicShareToken(searchParams.get('s') ?? searchParams.get('share'))
       setActiveView(window.location.hash === '#admin' ? 'admin' : 'collection')
       setShowAbout(window.location.hash === '#about-vehkix')
+      setShowEmergencyContacts(window.location.hash === '#emergency-contacts')
       setShowEmailConfirmation(new URLSearchParams(window.location.search).has('email-confirmation'))
       setShowProfile(false)
     }
@@ -152,15 +167,16 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!authReady || !session || adminAccessLoading || isAdmin) return
+    if (publicShareView || !authReady || !session || adminAccessLoading || isAdmin) return
     if (window.location.hash !== '#admin') return
 
     window.location.replace(`${window.location.pathname}${window.location.search}`)
-  }, [authReady, session, adminAccessLoading, isAdmin])
+  }, [publicShareView, authReady, session, adminAccessLoading, isAdmin])
 
   function navigateToView(view: 'collection' | 'admin') {
     setActiveView(view)
     setShowAbout(false)
+    setShowEmergencyContacts(false)
     const url = view === 'admin'
       ? `${window.location.pathname}${window.location.search}#admin`
       : `${window.location.pathname}${window.location.search}`
@@ -309,8 +325,6 @@ function App() {
 
 
   const username = session?.user.user_metadata.username || session?.user.email || ''
-  const connectionState = !supabaseClient ? 'error' : !authReady ? 'connecting' : 'live'
-
   useEffect(() => {
     if (!profileMenuOpen) return
 
@@ -335,14 +349,16 @@ function App() {
   return (
     <main className="page-shell">
       <header className="topbar">
-        {(session || showAbout || showEmailConfirmation) && (
+        {!publicShareView && (session || showAbout || showEmergencyContacts || showEmailConfirmation) && (
           <span className="wordmark"><img src={brandMark} alt="Vehkix" /></span>
         )}
-        <div className="topbar-actions">
-          <span className="data-status" data-state={connectionState}>
-            <span aria-hidden="true" />
-            {!supabaseClient ? 'SETUP REQUIRED' : !authReady ? 'CONNECTING' : 'CONNECTED'}
-          </span>
+        {!publicShareView && <div className="topbar-actions">
+          {(!supabaseClient || !authReady) && (
+            <span className="data-status" data-state={!supabaseClient ? 'error' : 'connecting'}>
+              <span aria-hidden="true" />
+              {!supabaseClient ? 'SETUP REQUIRED' : 'CONNECTING'}
+            </span>
+          )}
           {session && !showEmailConfirmation && (
             <>
               <Suspense fallback={null}>
@@ -425,10 +441,15 @@ function App() {
               </div>
             </>
           )}
-        </div>
+        </div>}
       </header>
 
-      <section className="fleet" id="top" aria-labelledby="page-title" hidden={showAbout || showEmailConfirmation}>
+      <section
+        className="fleet"
+        id="top"
+        aria-labelledby="page-title"
+        hidden={publicShareView || showAbout || showEmergencyContacts || showEmailConfirmation}
+      >
         <div className="page-heading">
           <div>
             <h1 id="page-title">
@@ -449,7 +470,7 @@ function App() {
                 : <img className="brand-wordmark" src={brandWordmark} alt="Vehkix" />}
             </h1>
           </div>
-          {session && collectionView && (
+          {!publicShareView && session && collectionView && (
             <div className="summary" aria-label="Collection summary">
               <div className="summary-item">
                 <strong>{String(vehicleRecords.length).padStart(2, '0')}</strong>
@@ -516,7 +537,7 @@ function App() {
           </section>
         )}
 
-        {!session && authReady && supabaseClient && (
+        {!publicShareView && !session && authReady && supabaseClient && (
           <>
           {accountDeletionNotice && (
             <p className="empty-state" role="status">{accountDeletionNotice}</p>
@@ -541,19 +562,19 @@ function App() {
           </Suspense>
         )}
 
-        {!authReady && (
+        {!publicShareView && !authReady && (
           <p className="empty-state" role="status">Checking your session…</p>
         )}
 
-        {authReady && !supabaseClient && (
+        {!publicShareView && authReady && !supabaseClient && (
           <p className="empty-state error-state" role="alert">Supabase is not configured, so your private collection is unavailable.</p>
         )}
 
-        {session && adminAccessLoading && (
+        {!publicShareView && session && adminAccessLoading && (
           <p className="empty-state" role="status">Loading your workspace…</p>
         )}
 
-        {session && showProfile && (
+        {!publicShareView && session && showProfile && (
           <Suspense fallback={<p className="empty-state" role="status">Loading your profile…</p>}>
             <ProfilePanel
               userId={session.user.id}
@@ -567,7 +588,7 @@ function App() {
           </Suspense>
         )}
 
-        {session && adminView && (
+        {!publicShareView && session && adminView && (
           <Suspense fallback={<p className="empty-state" role="status">Loading admin panel…</p>}>
             <AdminPanel
               userCount={userCount}
@@ -755,7 +776,12 @@ function App() {
           </footer>
         )}
       </section>
-      {showEmailConfirmation && (
+      {publicShareToken && (
+        <Suspense fallback={<p className="empty-state" role="status">Loading shared vehicle…</p>}>
+          <PublicVehicleSharePage key={publicShareToken} token={publicShareToken} />
+        </Suspense>
+      )}
+      {!publicShareView && showEmailConfirmation && (
         <Suspense fallback={<p className="empty-state" role="status">Loading email confirmation…</p>}>
           <EmailConfirmationPage
             email={confirmationEmail}
@@ -765,15 +791,27 @@ function App() {
           />
         </Suspense>
       )}
-      {showAbout && (
+      {!publicShareView && showAbout && (
         <Suspense fallback={<p className="empty-state" role="status">Loading About Vehkix…</p>}>
-          <AboutPage />
+          <AboutPage
+            isSignedIn={Boolean(session)}
+            onGoHome={() => navigateToView('collection')}
+          />
         </Suspense>
       )}
-      <footer className="site-footer">
+      {!publicShareView && showEmergencyContacts && (
+        <Suspense fallback={<p className="empty-state" role="status">Loading emergency contacts…</p>}>
+          <EmergencyContactsPage
+            isSignedIn={Boolean(session)}
+            onGoHome={() => navigateToView('collection')}
+          />
+        </Suspense>
+      )}
+      {!publicShareView && <footer className="site-footer">
+        <a href="#emergency-contacts">Emergency contacts</a>
         <a href="#about-vehkix">About Vehkix</a>
         <a href="mailto:vehkix@gmail.com">Support</a>
-      </footer>
+      </footer>}
     </main>
   )
 }

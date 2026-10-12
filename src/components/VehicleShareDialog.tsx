@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import brandWordmark from '../../images/logo/vehkix-wordmark-color-transparent.png'
 import { useSharePreferences } from '../hooks/useSharePreferences'
 import VehicleAccessManager from './VehicleAccessManager'
+import VehiclePublicLinkManager from './VehiclePublicLinkManager'
 import type { ShareSection } from './vehicleShare'
 
 interface PrintDocument {
@@ -55,6 +56,7 @@ function VehicleShareDialog({
     useSharePreferences(userId, allFieldIds)
   const [printDocument, setPrintDocument] = useState<PrintDocument | null>(null)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [showPublicLinkManager, setShowPublicLinkManager] = useState(false)
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -153,10 +155,6 @@ function VehicleShareDialog({
   }
 
   function requestExit() {
-    if (mode === 'share') {
-      onClose()
-      return
-    }
     setShowExitConfirm(true)
   }
 
@@ -182,11 +180,27 @@ function VehicleShareDialog({
             </p>
           </header>
           {mode === 'share' && canManageSharing && (
-            <VehicleAccessManager
-              vehicleId={vehicleId}
-              canGrantEdit={canGrantEdit}
-              canGrantDelete={canGrantDelete}
-            />
+            <>
+              <VehicleAccessManager
+                vehicleId={vehicleId}
+                canGrantEdit={canGrantEdit}
+                canGrantDelete={canGrantDelete}
+              />
+              <button
+                type="button"
+                className="text-action vehicle-public-link-toggle"
+                aria-expanded={showPublicLinkManager}
+                aria-controls="vehicle-public-link-manager"
+                onClick={() => setShowPublicLinkManager((visible) => !visible)}
+              >
+                {showPublicLinkManager ? 'Hide read-only link options' : 'Share a read-only link'}
+              </button>
+              {showPublicLinkManager && (
+                <div id="vehicle-public-link-manager">
+                  <VehiclePublicLinkManager vehicleId={vehicleId} userId={userId} sections={sections} />
+                </div>
+              )}
+            </>
           )}
           {mode === 'print' && (
             <>

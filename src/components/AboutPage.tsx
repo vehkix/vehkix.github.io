@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { supabaseClient } from '../lib/supabase'
 import './AboutPage.css'
 
-function AboutPage() {
+interface AboutPageProps {
+  isSignedIn: boolean
+  onGoHome: () => void
+}
+
+function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
   const statsSection = useRef<HTMLElement | null>(null)
   const [stats, setStats] = useState<{ users: number; vehicles: number } | null>(null)
   const [animatedStats, setAnimatedStats] = useState({ users: 0, vehicles: 0 })
@@ -97,7 +102,16 @@ function AboutPage() {
           Vehkix helps people keep vehicle details, maintenance, and important documents
           together—so caring for a vehicle feels simpler and more organized.
         </p>
-        <a className="primary-action" href="/">Explore Vehkix</a>
+        <a
+          className="primary-action"
+          href="#top"
+          onClick={(event) => {
+            event.preventDefault()
+            onGoHome()
+          }}
+        >
+          {isSignedIn ? 'Go back home' : 'Explore Vehkix'}
+        </a>
       </header>
 
       <section className="about-intro" aria-labelledby="about-why-title">
