@@ -9,6 +9,47 @@ import './VehicleList.css'
 const VehicleShareDialog = lazy(() => import('./VehicleShareDialog'))
 const VehicleTransferDialog = lazy(() => import('./VehicleTransferDialog'))
 
+interface VehicleDeleteConfirmProps {
+  vehicleName: string
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+function VehicleDeleteConfirm({ vehicleName, busy, onCancel, onConfirm }: VehicleDeleteConfirmProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    dialog.showModal()
+    return () => dialog.close()
+  }, [])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="vehicle-delete-dialog"
+      aria-labelledby="vehicle-delete-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        onCancel()
+      }}
+    >
+      <h2 id="vehicle-delete-title">Delete vehicle?</h2>
+      <p>Delete {vehicleName} and its uploaded images? This cannot be undone.</p>
+      <div className="vehicle-delete-actions">
+        <button className="text-action" type="button" disabled={busy} onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="vehicle-delete-confirm" type="button" disabled={busy} onClick={onConfirm}>
+          {busy ? 'Deleting…' : 'Delete vehicle'}
+        </button>
+      </div>
+    </dialog>
+  )
+}
+
 interface VehicleListProps {
   vehicles: Vehicle[]
   query: string
@@ -73,6 +114,7 @@ function VehicleList({
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
   const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
   const [transferVehicleId, setTransferVehicleId] = useState<string | null>(null)
+  const [deleteVehicleTarget, setDeleteVehicleTarget] = useState<{ vehicle: Vehicle; name: string } | null>(null)
   const [openMenu, setOpenMenu] = useState<{ vehicleId: string; location: 'tile' | 'details' } | null>(null)
   const [menuPlacement, setMenuPlacement] = useState<'above' | 'below'>('below')
   const listRef = useRef<HTMLDivElement>(null)
@@ -171,6 +213,18 @@ function VehicleList({
           </div>
         </section>
       ))}
+      {deleteVehicleTarget && (
+        <VehicleDeleteConfirm
+          vehicleName={deleteVehicleTarget.name}
+          busy={deleteBusy}
+          onCancel={() => setDeleteVehicleTarget(null)}
+          onConfirm={() => {
+            const vehicle = deleteVehicleTarget.vehicle
+            setDeleteVehicleTarget(null)
+            onDelete(vehicle)
+          }}
+        />
+      )}
     </div>
   )
 
@@ -271,9 +325,7 @@ function VehicleList({
                       disabled={deleteBusy}
                       onClick={() => {
                         dismissMenu()
-                        if (window.confirm(`Delete ${vehicleName} and its uploaded images? This cannot be undone.`)) {
-                          onDelete(vehicle)
-                        }
+                        setDeleteVehicleTarget({ vehicle, name: vehicleName })
                       }}
                     >
                       Delete

@@ -25,12 +25,13 @@ interface SelectedImage {
   previewUrl: string
 }
 
-type RegistrationSeparator = '-' | ' ' | '/'
+type RegistrationSeparator = '-' | ' ' | '/' | ''
 
 const registrationSeparators: { value: RegistrationSeparator; label: string }[] = [
   { value: '-', label: 'Hyphen (-)' },
   { value: ' ', label: 'Space' },
   { value: '/', label: 'Slash (/)' },
+  { value: '', label: 'No separator' },
 ]
 
 function formatRegistrationNumber(value: string, separator: RegistrationSeparator) {
@@ -346,7 +347,7 @@ function VehicleForm({
                   value={registrationSeparator}
                   onChange={(event) => {
                     const separator = registrationSeparators.find((option) => option.value === event.target.value)?.value
-                    if (!separator) return
+                    if (separator === undefined) return
                     setRegistrationSeparator(separator)
                     updateField('vehicle_number', draft.vehicle_number, separator)
                   }}

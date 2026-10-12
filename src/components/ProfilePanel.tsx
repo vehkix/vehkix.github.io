@@ -12,11 +12,21 @@ interface ProfilePanelProps {
   onUpdateUsername: (username: string) => Promise<string | null>
   onAvatarChanged: () => void
   onDeletionConfirmed: () => Promise<string | null>
+  onSignOut: () => Promise<string | null>
 }
 
 interface DeletionRequest {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   requested_at: string
+}
+
+interface AccountVehicleShare {
+  share_id: string
+  vehicle_id: string
+  vehicle_label: string
+  username: string
+  direction: 'shared_by_you' | 'shared_with_you'
+  status: 'pending' | 'accepted' | 'rejected'
 }
 
 function ProfilePanel({
@@ -26,6 +36,7 @@ function ProfilePanel({
   onUpdateUsername,
   onAvatarChanged,
   onDeletionConfirmed,
+  onSignOut,
 }: ProfilePanelProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [username, setUsername] = useState(initialUsername)
@@ -38,6 +49,10 @@ function ProfilePanel({
   const [avatar, setAvatar] = useState<{ path: string; url: string } | null>(null)
   const [deletionRequest, setDeletionRequest] = useState<DeletionRequest | null>(null)
   const [deletionEmail, setDeletionEmail] = useState('')
+  const [showDeletionConfirmation, setShowDeletionConfirmation] = useState(false)
+  const [vehicleShares, setVehicleShares] = useState<AccountVehicleShare[]>([])
+  const [vehicleSharesLoading, setVehicleSharesLoading] = useState(true)
+  const [vehicleSharesError, setVehicleSharesError] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
@@ -91,13 +106,16 @@ function ProfilePanel({
 
     async function loadProfile() {
       try {
-        const [profileResult, deletionResult] = await Promise.all([
+        const [profileResult, deletionResult, sharesResult] = await Promise.all([
           client.from('profiles').select('username, avatar_path').eq('id', userId).single(),
           client.rpc('get_my_deletion_request'),
+          client.rpc('list_my_account_vehicle_shares'),
         ])
         if (!current) return
         if (profileResult.error || deletionResult.error) {
           setError('Could not load your profile. Run the latest user-account SQL in Supabase.')
+          setVehicleSharesError('Could not load vehicle sharing details.')
+          setVehicleSharesLoading(false)
           return
         }
         if (profileResult.data) {
@@ -107,8 +125,19 @@ function ProfilePanel({
         }
         const latestRequest = deletionResult.data?.[0] as DeletionRequest | undefined
         setDeletionRequest(latestRequest ?? null)
+        if (sharesResult.error) {
+          setVehicleSharesError('Could not load vehicle sharing details. Run the latest vehicle-sharing SQL.')
+        } else {
+          setVehicleShares((sharesResult.data ?? []) as AccountVehicleShare[])
+          setVehicleSharesError(null)
+        }
+        setVehicleSharesLoading(false)
       } catch {
-        if (current) setError('Could not load your profile. Check your connection and try again.')
+        if (current) {
+          setError('Could not load your profile. Check your connection and try again.')
+          setVehicleSharesError('Could not load vehicle sharing details. Check your connection and try again.')
+          setVehicleSharesLoading(false)
+        }
       }
     }
 
@@ -304,6 +333,7 @@ function ProfilePanel({
         setMessage('Your account will be permanently deleted within 1 month if you do not log in again.')
         const signOutError = await onDeletionConfirmed()
         if (signOutError) setError(signOutError)
+        else setShowDeletionConfirmation(false)
       }
     } catch {
       setError('Could not connect to the account service. Try again.')
@@ -448,7 +478,21 @@ function ProfilePanel({
                     : 'Confirm your account email to schedule deletion. Logging in again within one month cancels it.'}
             </p>
           </div>
-          {deletionRequest?.status !== 'pending' && (
+          {deletionRequest?.status !== 'pending' && !showDeletionConfirmation && (
+            <button
+              className="profile-danger-action"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setDeletionEmail('')
+                setError(null)
+                setShowDeletionConfirmation(true)
+              }}
+            >
+              Delete account
+            </button>
+          )}
+          {deletionRequest?.status !== 'pending' && showDeletionConfirmation && (
             <form className="profile-delete-confirm" onSubmit={(event) => void requestDeletion(event)}>
               <label className="form-field">
                 <span>Confirm your account email</span>
@@ -465,9 +509,69 @@ function ProfilePanel({
               <button className="profile-danger-action" type="submit" disabled={busy}>
                 Confirm account deletion
               </button>
+              <button
+                className="text-action"
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setShowDeletionConfirmation(false)
+                  setDeletionEmail('')
+                }}
+              >
+                Cancel
+              </button>
             </form>
           )}
         </section>
+
+        <section className="profile-card profile-signout-card" aria-labelledby="profile-signout-title">
+          <div>
+            <h3 id="profile-signout-title">Sign out</h3>
+            <p>Sign out of your Vehkix account on this device.</p>
+          </div>
+          <button className="text-action" type="button" disabled={busy} onClick={() => { void onSignOut() }}>
+            Sign out
+          </button>
+        </section>
+
+        <section className="profile-card profile-sharing-card" aria-labelledby="profile-sharing-title">
+          <h3 id="profile-sharing-title">Vehicle sharing</h3>
+          {vehicleSharesError ? (
+            <p className="profile-sharing-message error-state" role="alert">{vehicleSharesError}</p>
+          ) : vehicleSharesLoading ? (
+            <p className="profile-sharing-message" role="status">Loading vehicle sharing…</p>
+          ) : (
+            <>
+              <div className="profile-sharing-group">
+                <h4>Shared by you</h4>
+                {vehicleShares.filter((share) => share.direction === 'shared_by_you').length > 0 ? (
+                  <ul className="profile-sharing-list">
+                    {vehicleShares.filter((share) => share.direction === 'shared_by_you').map((share) => (
+                      <li key={share.share_id}>
+                        <strong>{share.vehicle_label}</strong>
+                        <span>With {share.username} · {share.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="profile-sharing-message">You haven’t shared any vehicles yet.</p>}
+              </div>
+              <div className="profile-sharing-group">
+                <h4>Shared with you</h4>
+                {vehicleShares.filter((share) => share.direction === 'shared_with_you').length > 0 ? (
+                  <ul className="profile-sharing-list">
+                    {vehicleShares.filter((share) => share.direction === 'shared_with_you').map((share) => (
+                      <li key={share.share_id}>
+                        <strong>{share.vehicle_label}</strong>
+                        <span>From {share.username} · {share.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="profile-sharing-message">No vehicles have been shared with you.</p>}
+              </div>
+            </>
+          )}
+        </section>
+
       </div>
 
       {(error || message) && (

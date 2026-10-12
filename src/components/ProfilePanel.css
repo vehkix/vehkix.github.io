@@ -159,6 +159,68 @@
   align-items: center;
 }
 
+.profile-sharing-card,
+.profile-signout-card {
+  grid-column: 1 / -1;
+}
+
+.profile-sharing-card {
+  gap: 18px;
+}
+
+.profile-sharing-group {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-sharing-group h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.profile-sharing-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.profile-sharing-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.profile-sharing-list strong {
+  color: var(--ink);
+}
+
+.profile-sharing-list span,
+.profile-sharing-message {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.profile-sharing-message {
+  margin: 0;
+}
+
+.profile-sharing-message.error-state {
+  color: #a3342e;
+}
+
+.profile-signout-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .profile-danger-action {
   padding: 9px 12px;
   border: 1px solid #a3342e;
@@ -173,6 +235,7 @@
 
 .profile-delete-confirm {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: 12px;
 }
@@ -204,5 +267,15 @@
 
   .profile-delete-confirm .form-field {
     min-width: 0;
+  }
+
+  .profile-sharing-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .profile-signout-card {
+    align-items: flex-start;
   }
 }

@@ -171,6 +171,49 @@ $$;
 revoke all on function public.list_my_vehicle_shares(uuid) from public, anon;
 grant execute on function public.list_my_vehicle_shares(uuid) to authenticated;
 
+create or replace function public.list_my_account_vehicle_shares()
+returns table (
+  share_id uuid,
+  vehicle_id uuid,
+  vehicle_label text,
+  username text,
+  direction text,
+  status text
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    vehicle_share.id,
+    vehicle_share.vehicle_id,
+    coalesce(
+      nullif(btrim(concat_ws(' ', vehicle.company, vehicle.model)), ''),
+      vehicle.vehicle_number,
+      'Vehicle'
+    ),
+    profile.username,
+    case
+      when vehicle_share.shared_by = (select auth.uid()) then 'shared_by_you'
+      else 'shared_with_you'
+    end,
+    vehicle_share.status
+  from public.user_vehicle_shares as vehicle_share
+  left join public.user_vehicles as vehicle on vehicle.id = vehicle_share.vehicle_id
+  left join public.profiles as profile
+    on profile.id = case
+      when vehicle_share.shared_by = (select auth.uid()) then vehicle_share.shared_with_user_id
+      else vehicle_share.shared_by
+    end
+  where vehicle_share.shared_by = (select auth.uid())
+     or vehicle_share.shared_with_user_id = (select auth.uid())
+  order by vehicle_share.created_at desc;
+$$;
+
+revoke all on function public.list_my_account_vehicle_shares() from public, anon;
+grant execute on function public.list_my_account_vehicle_shares() to authenticated;
+
 create or replace function public.grant_vehicle_share(
   target_vehicle_id uuid,
   recipient_user_id uuid,

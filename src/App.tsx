@@ -214,12 +214,15 @@ function App() {
     setActionError(await deleteVehicle(vehicle))
   }
 
-  async function handleSignOut() {
-    setActionError(await signOut())
+  async function handleSignOut(): Promise<string | null> {
+    const message = await signOut()
+    setActionError(message)
+    if (message) return message
     setShowProfile(false)
     setShowVehicleForm(false)
     setEditingVehicle(null)
     navigateToView('collection')
+    return null
   }
 
   async function handleAccountDeletionConfirmed() {
@@ -547,7 +550,7 @@ function App() {
         )}
 
         {session && adminAccessLoading && (
-          <p className="empty-state" role="status">Verifying admin access…</p>
+          <p className="empty-state" role="status">Loading your workspace…</p>
         )}
 
         {session && showProfile && (
@@ -559,6 +562,7 @@ function App() {
               onUpdateUsername={updateUsername}
               onAvatarChanged={() => setProfileAvatarRevision((revision) => revision + 1)}
               onDeletionConfirmed={handleAccountDeletionConfirmed}
+              onSignOut={handleSignOut}
             />
           </Suspense>
         )}
