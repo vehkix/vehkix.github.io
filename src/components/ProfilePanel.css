@@ -26,6 +26,35 @@
   font-size: 24px;
 }
 
+.profile-section-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-section-tabs button {
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-section-tabs button[aria-current='page'] {
+  border-bottom-color: var(--green);
+  color: var(--green);
+}
+
+.profile-section-tabs button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 .profile-avatar-control {
   display: grid;
   justify-items: center;

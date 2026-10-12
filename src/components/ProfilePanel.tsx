@@ -29,6 +29,8 @@ interface AccountVehicleShare {
   status: 'pending' | 'accepted' | 'rejected'
 }
 
+type ProfileSection = 'settings' | 'sharing'
+
 function ProfilePanel({
   userId,
   accountEmail,
@@ -39,6 +41,7 @@ function ProfilePanel({
   onSignOut,
 }: ProfilePanelProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [activeSection, setActiveSection] = useState<ProfileSection>('settings')
   const [username, setUsername] = useState(initialUsername)
   const [savedUsername, setSavedUsername] = useState(initialUsername)
   const [availability, setAvailability] = useState<{
@@ -388,7 +391,26 @@ function ProfilePanel({
         </div>
       </header>
 
+      <nav className="profile-section-tabs" aria-label="Profile sections">
+        <button
+          type="button"
+          aria-current={activeSection === 'settings' ? 'page' : undefined}
+          onClick={() => setActiveSection('settings')}
+        >
+          Settings
+        </button>
+        <button
+          type="button"
+          aria-current={activeSection === 'sharing' ? 'page' : undefined}
+          onClick={() => setActiveSection('sharing')}
+        >
+          Manage sharing
+        </button>
+      </nav>
+
       <div className="profile-panel-content">
+        {activeSection === 'settings' && (
+          <>
         <form className="profile-card stacked-form" onSubmit={(event) => void saveUsername(event)}>
           <h3>Username</h3>
           <label className="form-field">
@@ -450,14 +472,14 @@ function ProfilePanel({
             />
           </label>
           <label className="form-field">
-            <span>Confirm new password</span>
+            <span>Confirm password</span>
             <PasswordInput
               autoComplete="new-password"
               minLength={8}
               required
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Enter it again"
+              placeholder="Confirm new password"
             />
           </label>
           <button className="primary-action" type="submit" disabled={busy}>
@@ -533,8 +555,10 @@ function ProfilePanel({
             Sign out
           </button>
         </section>
+          </>
+        )}
 
-        <section className="profile-card profile-sharing-card" aria-labelledby="profile-sharing-title">
+        {activeSection === 'sharing' && <section className="profile-card profile-sharing-card" aria-labelledby="profile-sharing-title">
           <h3 id="profile-sharing-title">Vehicle sharing</h3>
           {vehicleSharesError ? (
             <p className="profile-sharing-message error-state" role="alert">{vehicleSharesError}</p>
@@ -570,7 +594,7 @@ function ProfilePanel({
               </div>
             </>
           )}
-        </section>
+        </section>}
 
       </div>
 
