@@ -45,6 +45,7 @@ export interface Vehicle {
   images?: string[] | null
   image_paths?: string[]
   image_access_error?: boolean
+  images_loading?: boolean
   signed_images?: ExistingVehicleImage[]
   primary_image?: string | null
 }

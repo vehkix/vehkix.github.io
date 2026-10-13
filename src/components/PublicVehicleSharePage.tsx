@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import brandWordmark from '../../images/logo/vehkix-wordmark-color-transparent.png'
 import { formatDate, formatMileage } from '../lib/vehicle'
 import { supabaseClient } from '../lib/supabase'
+import ImageWithShimmer from './ImageWithShimmer'
 import './PublicVehicleSharePage.css'
 
 interface PublicShareData {
@@ -148,7 +149,14 @@ function PublicVehicleSharePage({ token }: { token: string }) {
             <section className="public-share-photos" aria-label="Shared vehicle photos">
               {share.image_urls.map(({ path, url }, index) => (
                 <a key={path} href={url} target="_blank" rel="noreferrer">
-                  <img src={url} alt={`${share.vehicle_name}, photo ${index + 1}`} loading="lazy" />
+                  <ImageWithShimmer
+                    key={url}
+                    className="public-share-image"
+                    src={url}
+                    alt={`${share.vehicle_name}, photo ${index + 1}`}
+                    loading="lazy"
+                    onError={() => setImageError(true)}
+                  />
                 </a>
               ))}
             </section>

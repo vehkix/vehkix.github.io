@@ -163,6 +163,35 @@
   text-underline-offset: 3px;
 }
 
+.about-contact .about-instagram {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.about-instagram svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+
+.about-instagram .about-instagram-dot {
+  fill: currentColor;
+  stroke: none;
+}
+
+.about-contact .about-instagram:hover,
+.about-contact .about-instagram:focus-visible {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .about-stats {
   margin-top: 34px;
   padding: 24px 0;

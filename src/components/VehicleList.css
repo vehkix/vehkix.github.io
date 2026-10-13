@@ -62,11 +62,9 @@
   background: var(--white);
 }
 
-.vehicle-cover > img {
-  display: block;
+.vehicle-cover > .vehicle-cover-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .vehicle-cover-empty {
@@ -969,11 +967,31 @@
   text-decoration: none;
 }
 
-.detail-image-grid img {
+.detail-image-grid .detail-image {
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
   border: 1px solid var(--line);
+}
+
+.vehicle-menu-popover .leave-shared-action {
+  color: #a3342e;
+}
+
+.vehicle-leave-confirm {
+  padding: 9px 12px;
+  border: 1px solid #a3342e;
+  border-radius: 2px;
+  color: var(--white);
+  background: #a3342e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vehicle-leave-confirm:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 @media (max-width: 760px) {

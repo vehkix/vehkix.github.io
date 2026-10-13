@@ -19,9 +19,9 @@ These numbers are standard across India for emergency and essential services.
 
 NHAI Helpline: 1033
 
-### Kerala State Helpline Numbers
+### Keralam State Helpline Numbers
 
-In addition to the national numbers above, Kerala provides specific services and local emergency contacts.
+In addition to the national numbers above, Keralam provides specific services and local emergency contacts.
 
 | Service                      | Number        |
 | :--------------------------- | :------------ |
@@ -31,7 +31,7 @@ In addition to the national numbers above, Kerala provides specific services and
 | District Disaster Management | 1077          |
 | Crime Stopper                | 1090          |
 | KSEB (Electricity)           | 1912          |
-| Kerala Water Authority       | 1800-425-5313 |
+| Keralam Water Authority      | 1800-425-5313 |
 | Civil Supplies               | 1967          |
 | General Query Call Center    | 1961          |
 | Railway Police Alert         | 9846200100    |

@@ -1,17 +1,19 @@
 {
   "name": "vehkix",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "tsc -b && vite build",
-  "lint": "eslint .",
-  "preview": "vite preview",
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d dist"
-},
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
   "dependencies": {
+    "@fontsource-variable/cabin": "^5.3.0",
+    "@fontsource/lato": "^5.3.0",
     "@supabase/supabase-js": "^2.117.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

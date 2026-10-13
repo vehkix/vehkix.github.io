@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
 import type { ExistingVehicleImage, VehicleDraft } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
+import ImageWithShimmer, { ImageShimmerPlaceholder } from './ImageWithShimmer'
 import '../styles/forms.css'
 import './VehicleForm.css'
 
@@ -431,8 +432,12 @@ function VehicleForm({
             {imageEntries.map((image) => (
               <li className="image-preview" key={image.key}>
                 {image.url
-                  ? <img src={image.url} alt={image.label} />
-                  : <span className="image-preview-placeholder">Preview unavailable</span>}
+                  ? <ImageWithShimmer
+                    className="image-preview-image"
+                    src={image.url}
+                    alt={image.label}
+                  />
+                  : <ImageShimmerPlaceholder className="image-preview-image" label="Preview unavailable" />}
                 <div className="image-preview-controls">
                   <label>
                     <input

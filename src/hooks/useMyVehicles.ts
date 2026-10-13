@@ -215,6 +215,7 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
           can_share: row.user_id === activeUserId || sharePermissions.get(row.id)?.canShare === true,
           can_edit: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canEdit === true,
           can_delete: adminView || row.user_id === activeUserId || sharePermissions.get(row.id)?.canDelete === true,
+          images_loading: (row.images?.length ?? 0) > 0,
         }))
         const vehicleCounts = new Map<string, number>()
         for (const vehicle of normalized) {
@@ -240,6 +241,7 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
             image_paths: paths,
             signed_images: signedImages,
             image_access_error: signedImages.some((image) => image.error),
+            images_loading: false,
             images: signedImages.flatMap((image) => image.url ?? []),
           }
         }))

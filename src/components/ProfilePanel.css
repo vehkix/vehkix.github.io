@@ -26,6 +26,34 @@
   font-size: 24px;
 }
 
+.profile-identity {
+  min-width: 0;
+}
+
+.profile-username-form {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.profile-username-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-username-field {
+  width: min(280px, 100%);
+}
+
+.profile-username-field input {
+  min-width: 0;
+}
+
+.profile-username-field small {
+  margin-top: 3px;
+}
+
 .profile-section-tabs {
   display: flex;
   gap: 4px;
@@ -67,6 +95,7 @@
   display: grid;
   width: 64px;
   height: 64px;
+  box-sizing: border-box;
   padding: 0;
   flex: 0 0 64px;
   overflow: hidden;
@@ -90,10 +119,16 @@
   opacity: 0.7;
 }
 
-.profile-avatar img {
+.profile-avatar-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  border-radius: inherit;
+}
+
+.profile-avatar.has-photo {
+  background: transparent;
 }
 
 .profile-avatar-edit {
@@ -121,6 +156,19 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   clip-path: inset(50%);
+}
+
+.profile-view-photo {
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.profile-view-photo:hover,
+.profile-view-photo:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .profile-panel-content {
@@ -180,6 +228,40 @@
 .username-availability.taken,
 .username-availability.error {
   color: #a3342e;
+}
+
+.username-edit-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.username-edit-button:hover,
+.username-edit-button:focus-visible {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.username-edit-button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.username-edit-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .username-actions {
@@ -254,6 +336,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.profile-version {
+  grid-column: 1 / -1;
+  margin: -12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
 }
 
 .profile-danger-action {

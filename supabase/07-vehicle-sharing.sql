@@ -32,7 +32,7 @@ alter table public.app_notifications
   check (kind in (
     'vehicle_share_sent', 'vehicle_share_received',
     'vehicle_share_received_accepted', 'vehicle_share_received_rejected',
-    'vehicle_share_accepted', 'vehicle_share_rejected',
+    'vehicle_share_accepted', 'vehicle_share_rejected', 'vehicle_share_left',
     'account_deletion_requested', 'account_deletion_rejected'
   ));
 
@@ -375,6 +375,51 @@ $$;
 
 revoke all on function public.respond_to_vehicle_share(uuid, boolean) from public, anon;
 grant execute on function public.respond_to_vehicle_share(uuid, boolean) to authenticated;
+
+create or replace function public.leave_shared_vehicle(target_vehicle_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  share_row record;
+  removed_count integer := 0;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Authentication required';
+  end if;
+
+  for share_row in
+    select id, shared_by, vehicle_id
+    from public.user_vehicle_shares
+    where vehicle_id = target_vehicle_id
+      and shared_with_user_id = (select auth.uid())
+      and status = 'accepted'
+    for update
+  loop
+    insert into public.app_notifications (recipient_id, kind, actor_id, vehicle_id)
+    values (
+      share_row.shared_by,
+      'vehicle_share_left',
+      (select auth.uid()),
+      share_row.vehicle_id
+    );
+
+    delete from public.user_vehicle_shares
+    where id = share_row.id
+      and shared_with_user_id = (select auth.uid());
+    removed_count := removed_count + 1;
+  end loop;
+
+  if removed_count = 0 then
+    raise exception 'No active shared access found for this vehicle';
+  end if;
+end;
+$$;
+
+revoke all on function public.leave_shared_vehicle(uuid) from public, anon;
+grant execute on function public.leave_shared_vehicle(uuid) to authenticated;
 
 create or replace function public.revoke_vehicle_share(target_share_id uuid)
 returns void

@@ -111,6 +111,8 @@
   display: grid;
   width: 40px;
   height: 40px;
+  box-sizing: border-box;
+  flex: 0 0 40px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -165,9 +167,13 @@
 }
 
 .profile-tab-avatar {
+  position: relative;
   display: grid;
   width: 32px;
   height: 32px;
+  box-sizing: border-box;
+  flex: 0 0 32px;
+  overflow: hidden;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 50%;
@@ -177,11 +183,17 @@
   font-weight: 700;
 }
 
-.profile-tab-avatar img {
+.profile-tab-avatar-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
+  border-radius: inherit;
+}
+
+.profile-tab-avatar.has-photo {
+  border-color: transparent;
+  background: transparent;
 }
 
 .text-action {

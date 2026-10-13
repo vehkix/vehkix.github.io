@@ -7,7 +7,7 @@ interface EmergencyContact {
   detail?: string
 }
 
-const keralaContacts: EmergencyContact[] = [
+const KeralamContacts: EmergencyContact[] = [
   { service: 'Integrated emergency response', numbers: ['112'], detail: 'Police, fire, and urgent emergencies' },
   { service: 'Police', numbers: ['100'] },
   { service: 'Fire and rescue', numbers: ['101'] },
@@ -17,12 +17,12 @@ const keralaContacts: EmergencyContact[] = [
   { service: 'Women helpline', numbers: ['181', '1091'] },
   { service: 'Child helpline', numbers: ['1098'] },
   { service: 'Pink Police Patrol', numbers: ['1515'] },
-  { service: 'Kerala State Disaster Management', numbers: ['1070'] },
+  { service: 'Keralam State Disaster Management', numbers: ['1070'] },
   { service: 'District Disaster Management', numbers: ['1077'] },
-  { service: 'Dial a Doctor', numbers: ['1056'], detail: 'Kerala tele-health service' },
+  { service: 'Dial a Doctor', numbers: ['1056'], detail: 'Keralam tele-health service' },
   { service: 'Crime Stopper', numbers: ['1090'] },
   { service: 'KSEB electricity helpline', numbers: ['1912'] },
-  { service: 'Kerala Water Authority', numbers: ['1800-425-5313'] },
+  { service: 'Keralam Water Authority', numbers: ['1800-425-5313'] },
   { service: 'Civil Supplies', numbers: ['1967'] },
   { service: 'General Query Call Center', numbers: ['1961'] },
   { service: 'Cyber Crime Helpline', numbers: ['1930'] },
@@ -60,9 +60,9 @@ interface EmergencyContactsPageProps {
 }
 
 function EmergencyContactsPage({ isSignedIn, onGoHome }: EmergencyContactsPageProps) {
-  const [activeRegion, setActiveRegion] = useState<'kerala' | 'india'>('kerala')
+  const [activeRegion, setActiveRegion] = useState<'Keralam' | 'india'>('Keralam')
   const [searchQuery, setSearchQuery] = useState('')
-  const contacts = activeRegion === 'kerala' ? keralaContacts : indiaContacts
+  const contacts = activeRegion === 'Keralam' ? KeralamContacts : indiaContacts
   const filteredContacts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     if (!query) return contacts
@@ -97,11 +97,11 @@ function EmergencyContactsPage({ isSignedIn, onGoHome }: EmergencyContactsPagePr
       <nav className="emergency-region-tabs" aria-label="Emergency contact regions">
         <button
           type="button"
-          aria-current={activeRegion === 'kerala' ? 'page' : undefined}
-          onClick={() => setActiveRegion('kerala')}
+          aria-current={activeRegion === 'Keralam' ? 'page' : undefined}
+          onClick={() => setActiveRegion('Keralam')}
         >
-          Kerala
-          <span>{countNumbers(keralaContacts)} numbers</span>
+          Keralam
+          <span>{countNumbers(KeralamContacts)} numbers</span>
         </button>
         <button
           type="button"
@@ -114,8 +114,8 @@ function EmergencyContactsPage({ isSignedIn, onGoHome }: EmergencyContactsPagePr
       </nav>
 
       <p className="emergency-region-note">
-        {activeRegion === 'kerala'
-          ? 'Kerala contacts first, followed by national emergency and essential-service helplines.'
+        {activeRegion === 'Keralam'
+          ? 'Keralam contacts first, followed by national emergency and essential-service helplines.'
           : 'National emergency and essential-service helplines available across India.'}
       </p>
 

@@ -30,6 +30,7 @@ function getNotificationMessage(notification: AppNotification) {
     case 'vehicle_share_sent': return `You shared ${vehicle} with ${actor}.`
     case 'vehicle_share_accepted': return `${actor} accepted your share of ${vehicle}.`
     case 'vehicle_share_rejected': return `${actor} rejected your share of ${vehicle}.`
+    case 'vehicle_share_left': return `${actor} left their shared access to ${vehicle}.`
     case 'account_deletion_requested': return `${actor} requested account deletion.`
     case 'account_deletion_rejected': return 'Your account deletion request was declined.'
     default: return 'You have a new notification.'

@@ -4,6 +4,7 @@ import type { ExistingVehicleImage, Vehicle } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
 import type { AdminAccount } from '../types/admin'
 import { createShareSections } from './vehicleShare'
+import ImageWithShimmer, { ImageShimmerPlaceholder } from './ImageWithShimmer'
 import './VehicleList.css'
 
 const VehicleShareDialog = lazy(() => import('./VehicleShareDialog'))
@@ -50,6 +51,87 @@ function VehicleDeleteConfirm({ vehicleName, busy, onCancel, onConfirm }: Vehicl
   )
 }
 
+interface VehicleLeaveConfirmProps {
+  vehicleName: string
+  ownerUsername: string
+  onCancel: () => void
+  onConfirm: () => Promise<string | null>
+}
+
+function VehicleLeaveConfirm({
+  vehicleName,
+  ownerUsername,
+  onCancel,
+  onConfirm,
+}: VehicleLeaveConfirmProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [completed, setCompleted] = useState(false)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    dialog.showModal()
+    return () => dialog.close()
+  }, [])
+
+  async function leaveSharedVehicle() {
+    setBusy(true)
+    setError(null)
+    try {
+      const leaveError = await onConfirm()
+      if (leaveError) setError(leaveError)
+      else setCompleted(true)
+    } catch {
+      setError('Could not leave this shared vehicle. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="vehicle-delete-dialog"
+      aria-labelledby="vehicle-leave-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        if (!busy) onCancel()
+      }}
+    >
+      <h2 id="vehicle-leave-title">{completed ? 'Access removed' : 'Leave shared vehicle?'}</h2>
+      {completed ? (
+        <p role="status">You left {vehicleName}. {ownerUsername} has been notified.</p>
+      ) : (
+        <p>
+          Leave {vehicleName} shared by {ownerUsername}? You will lose access, and the sender will be notified.
+        </p>
+      )}
+      {error && <p className="error-state" role="alert">{error}</p>}
+      <div className="vehicle-delete-actions">
+        {completed ? (
+          <button className="vehicle-delete-confirm" type="button" onClick={onCancel}>Done</button>
+        ) : (
+          <>
+            <button className="text-action" type="button" disabled={busy} onClick={onCancel}>
+              Cancel
+            </button>
+            <button
+              className="vehicle-leave-confirm"
+              type="button"
+              disabled={busy}
+              onClick={() => { void leaveSharedVehicle() }}
+            >
+              {busy ? 'Leaving…' : 'Leave vehicle'}
+            </button>
+          </>
+        )}
+      </div>
+    </dialog>
+  )
+}
+
 interface VehicleListProps {
   vehicles: Vehicle[]
   query: string
@@ -63,6 +145,7 @@ interface VehicleListProps {
   onToggleExpanded: (vehicleId: string) => void
   onEdit: (vehicle: Vehicle) => void
   onDelete: (vehicle: Vehicle) => void
+  onLeaveShared?: (vehicle: Vehicle) => Promise<string | null>
   onTransferComplete: () => void
 }
 
@@ -109,12 +192,14 @@ function VehicleList({
   onToggleExpanded,
   onEdit,
   onDelete,
+  onLeaveShared,
   onTransferComplete,
 }: VehicleListProps) {
   const [imageIndices, setImageIndices] = useState<Record<string, number>>({})
   const [vehicleDialog, setVehicleDialog] = useState<{ vehicleId: string; mode: 'share' | 'print' } | null>(null)
   const [transferVehicleId, setTransferVehicleId] = useState<string | null>(null)
   const [deleteVehicleTarget, setDeleteVehicleTarget] = useState<{ vehicle: Vehicle; name: string } | null>(null)
+  const [leaveVehicleTarget, setLeaveVehicleTarget] = useState<{ vehicle: Vehicle; name: string } | null>(null)
   const [openMenu, setOpenMenu] = useState<{ vehicleId: string; location: 'tile' | 'details' } | null>(null)
   const [menuPlacement, setMenuPlacement] = useState<'above' | 'below'>('below')
   const listRef = useRef<HTMLDivElement>(null)
@@ -225,6 +310,14 @@ function VehicleList({
           }}
         />
       )}
+      {leaveVehicleTarget && onLeaveShared && (
+        <VehicleLeaveConfirm
+          vehicleName={leaveVehicleTarget.name}
+          ownerUsername={leaveVehicleTarget.vehicle.owner_username || 'the sender'}
+          onCancel={() => setLeaveVehicleTarget(null)}
+          onConfirm={() => onLeaveShared(leaveVehicleTarget.vehicle)}
+        />
+      )}
     </div>
   )
 
@@ -331,6 +424,19 @@ function VehicleList({
                       Delete
                     </button>
                   )}
+                  {onLeaveShared && !showOwner && vehicle.user_id !== userId && (
+                    <button
+                      className="leave-shared-action"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        dismissMenu()
+                        setLeaveVehicleTarget({ vehicle, name: vehicleName })
+                      }}
+                    >
+                      Leave shared vehicle
+                    </button>
+                  )}
                   {(location === 'details' || isExpanded) && (
                     <button type="button" role="menuitem" onClick={() => {
                       dismissMenu()
@@ -350,7 +456,12 @@ function VehicleList({
             <div className="vehicle-cover">
               {fieldSettings.images.show_in_details && carouselImages.length > 0 ? (
                 <>
-                  <img src={carouselImages[activeImageIndex].url} alt={`${vehicleName} vehicle`} />
+                  <ImageWithShimmer
+                    key={carouselImages[activeImageIndex].url}
+                    className="vehicle-cover-image"
+                    src={carouselImages[activeImageIndex].url}
+                    alt={`${vehicleName} vehicle`}
+                  />
                   {carouselImages.length > 1 && (
                     <>
                       <button
@@ -381,6 +492,8 @@ function VehicleList({
                     </>
                   )}
                 </>
+              ) : vehicle.images_loading ? (
+                <ImageShimmerPlaceholder className="vehicle-cover-image" label="Loading vehicle photo" />
               ) : (
                 <span className="vehicle-cover-empty">
                   {fieldSettings.images.show_in_details
@@ -501,7 +614,13 @@ function VehicleList({
                     {images.map((image, index) => (
                       <li key={image}>
                         <a href={image} target="_blank" rel="noreferrer">
-                          <img src={image} alt={`${vehicleName}, photo ${index + 1}`} loading="lazy" />
+                          <ImageWithShimmer
+                            key={image}
+                            className="detail-image"
+                            src={image}
+                            alt={`${vehicleName}, photo ${index + 1}`}
+                            loading="lazy"
+                          />
                           <span>Photo {index + 1}</span>
                         </a>
                       </li>

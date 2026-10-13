@@ -10,7 +10,7 @@ An administrator visiting the site without `#admin` uses the regular collection 
 
 The sign-in panel, admin view, vehicle list, vehicle editor, and sharing tools are loaded on demand as separate JavaScript chunks.
 
-Emergency contacts are available to everyone from the site footer or directly at `#emergency-contacts`. The directory separates Kerala-priority contacts from India-wide helplines and provides tap-to-call numbers.
+Emergency contacts are available to everyone from the site footer or directly at `#emergency-contacts`. The directory separates Keralamm-priority contacts from India-wide helplines and provides tap-to-call numbers.
 
 ## Supabase setup
 
@@ -26,7 +26,7 @@ Emergency contacts are available to everyone from the site footer or directly at
    - [`supabase/11-public-vehicle-sharing.sql`](supabase/11-public-vehicle-sharing.sql)
    - [`supabase/12-public-share-preferences-and-short-links.sql`](supabase/12-public-share-preferences-and-short-links.sql)
      The About page's exact user and vehicle totals use the RPC in `03-vehicles.sql`; re-run that file to install it on an existing Supabase project.
-2. Supabase Auth enforces unique email addresses; the profiles index makes usernames unique regardless of case. Row-level security restricts vehicle records and images to their owner and explicitly authorized recipients. New vehicle shares remain pending until the recipient accepts them; rejecting a share removes access. Owners can grant view, re-share, edit, and delete permissions independently; recipients cannot grant permissions they do not hold. Vehicle owners and admins can transfer ownership to another account; transferring a vehicle revokes its existing shares. Users with sharing permission can also create revocable, read-only links for guests and choose exactly which shareable details and photos the links show; those field choices are saved per user. Guests cannot change the vehicle.
+2. Supabase Auth enforces unique email addresses; the profiles index makes usernames unique regardless of case. Row-level security restricts vehicle records and images to their owner and explicitly authorized recipients. New vehicle shares remain pending until the recipient accepts them; rejecting a share removes access. Owners can grant view, re-share, edit, and delete permissions independently; recipients cannot grant permissions they do not hold. Recipients can leave an accepted share at any time, which revokes their access and notifies the sender; this requires the latest `supabase/07-vehicle-sharing.sql`. Vehicle owners and admins can transfer ownership to another account; transferring a vehicle revokes its existing shares. Users with sharing permission can also create revocable, read-only links for guests and choose exactly which shareable details and photos the links show; those field choices are saved per user. Guests cannot change the vehicle.
 3. To grant the first admin, create your normal account, then run this in the Supabase SQL Editor with your account email substituted. Admin access is stored in `admin_users` and enforced by RLS; it cannot be self-assigned through the client.
 
 ```sql

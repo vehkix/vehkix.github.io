@@ -6,8 +6,8 @@
   --page: #fbfbf8;
   --green: #2a5b43;
   --lime: #bfd454;
-  --display: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  --sans: 'Segoe UI', sans-serif;
+  --display: 'Cabin Variable', 'Trebuchet MS', sans-serif;
+  --sans: 'Lato', 'Segoe UI', sans-serif;
   --mono: 'Cascadia Code', Consolas, monospace;
 
   font: 14px/1.45 var(--sans);

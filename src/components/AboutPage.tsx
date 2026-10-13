@@ -115,7 +115,7 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
       </header>
 
       <section className="about-intro" aria-labelledby="about-why-title">
-        <p className="eyebrow">WHY VEH KIX</p>
+        <p className="eyebrow">WHY VEHKIX</p>
         <h2 id="about-why-title">Vehicle information should be easy to find when it matters.</h2>
         <p>
           Service history, insurance and registration renewals, photos, and notes can get
@@ -216,7 +216,7 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
           <li>
             <h3>Emergency numbers close at hand</h3>
             <p>
-              Browse Kerala-priority and India-wide helplines, search by service or number,
+              Browse Keralamm-priority and India-wide helplines, search by service or number,
               and tap a contact to call from the <a href="#emergency-contacts">emergency contacts directory</a>.
             </p>
           </li>
@@ -228,6 +228,20 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
         <h2 id="about-contact-title">Questions or feedback?</h2>
         <p>We’d be glad to hear from you.</p>
         <a href="mailto:vehkix@gmail.com">vehkix@gmail.com</a>
+        <a
+          className="about-instagram"
+          href="https://www.instagram.com/vehkix/"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Vehkix on Instagram, @vehkix"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle className="about-instagram-dot" cx="17.5" cy="6.5" r="1" />
+          </svg>
+          <span>vehkix</span>
+        </a>
       </section>
 
       <section

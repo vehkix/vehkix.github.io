@@ -12,6 +12,7 @@ import { formatDate, getDueItems, getVehicleName, toVehicleDraft } from './lib/v
 import { vehicleFieldDefinitions } from './lib/vehicleSettings'
 import type { AdminSection } from './types/admin'
 import type { Vehicle, VehicleDraft } from './types/vehicle'
+import ImageWithShimmer from './components/ImageWithShimmer'
 import './styles/page.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
@@ -59,7 +60,12 @@ function App() {
   const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
   const [adminRefreshToken, setAdminRefreshToken] = useState(0)
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
-  const [profileAvatar, setProfileAvatar] = useState<{ userId: string; url: string } | null>(null)
+  const [profileAvatar, setProfileAvatar] = useState<{
+    userId: string
+    revision: number
+    status: 'none' | 'photo' | 'error'
+    url?: string
+  } | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [accountDeletionNotice, setAccountDeletionNotice] = useState<string | null>(null)
   const {
@@ -113,6 +119,7 @@ function App() {
     if (publicShareView || !supabaseClient || !session?.user.id) return
     const client = supabaseClient
     const activeUserId = session.user.id
+    const revision = profileAvatarRevision
     let current = true
 
     void Promise.resolve(client
@@ -123,11 +130,12 @@ function App() {
       .then(async ({ data, error }) => {
         if (!current) return
         if (error) {
+          setProfileAvatar({ userId: activeUserId, revision, status: 'error' })
           setActionError('Could not load your profile photo. Run the latest user-account SQL setup.')
           return
         }
         if (!data.avatar_path) {
-          setProfileAvatar(null)
+          setProfileAvatar({ userId: activeUserId, revision, status: 'none' })
           return
         }
         const { data: signedData, error: signedError } = await client.storage
@@ -135,13 +143,22 @@ function App() {
           .createSignedUrl(data.avatar_path, 60 * 60 * 24)
         if (!current) return
         if (signedError) {
+          setProfileAvatar({ userId: activeUserId, revision, status: 'error' })
           setActionError('Could not load your profile photo from Supabase Storage.')
           return
         }
-        setProfileAvatar({ userId: activeUserId, url: signedData.signedUrl })
+        setProfileAvatar({
+          userId: activeUserId,
+          revision,
+          status: 'photo',
+          url: signedData.signedUrl,
+        })
       })
       .catch(() => {
-        if (current) setActionError('Could not load your profile photo from Supabase.')
+        if (current) {
+          setProfileAvatar({ userId: activeUserId, revision, status: 'error' })
+          setActionError('Could not load your profile photo from Supabase.')
+        }
       })
 
     return () => { current = false }
@@ -228,6 +245,23 @@ function App() {
 
   async function handleDeleteVehicle(vehicle: Vehicle) {
     setActionError(await deleteVehicle(vehicle))
+  }
+
+  async function handleLeaveSharedVehicle(vehicle: Vehicle): Promise<string | null> {
+    if (!supabaseClient) return 'Supabase is not configured.'
+
+    try {
+      const { error } = await supabaseClient.rpc('leave_shared_vehicle', {
+        target_vehicle_id: vehicle.id,
+      })
+      if (error) {
+        return `Could not leave this shared vehicle: ${error.message}. Run the latest vehicle-sharing SQL in Supabase.`
+      }
+      setAdminRefreshToken((token) => token + 1)
+      return null
+    } catch {
+      return 'Could not connect to Supabase to leave this shared vehicle. Try again.'
+    }
   }
 
   async function handleSignOut(): Promise<string | null> {
@@ -403,10 +437,25 @@ function App() {
                   aria-haspopup="menu"
                   onClick={() => setProfileMenuOpen((open) => !open)}
                 >
-                  <span className="profile-tab-avatar" aria-hidden="true">
+                  <span
+                    className={`profile-tab-avatar${profileAvatar?.userId === session.user.id && profileAvatar.revision === profileAvatarRevision && profileAvatar.status === 'photo' ? ' has-photo' : ''}`}
+                    aria-hidden="true"
+                  >
                     {profileAvatar?.userId === session.user.id
-                      ? <img src={profileAvatar.url} alt="" />
-                      : getUsernameInitials(username)}
+                      && profileAvatar.revision === profileAvatarRevision
+                      && profileAvatar.status === 'photo'
+                      && profileAvatar.url
+                      ? <ImageWithShimmer
+                        key={profileAvatar.url}
+                        className="profile-tab-avatar-image"
+                        src={profileAvatar.url}
+                        alt=""
+                      />
+                      : profileAvatar?.userId === session.user.id
+                        && profileAvatar.revision === profileAvatarRevision
+                        && profileAvatar.status === 'none'
+                        ? getUsernameInitials(username)
+                        : null}
                   </span>
                 </button>
                 {profileMenuOpen && (
@@ -760,6 +809,7 @@ function App() {
                   )}
                   onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
                   onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
+                  onLeaveShared={handleLeaveSharedVehicle}
                   onTransferComplete={() => {
                     setAdminRefreshToken((token) => token + 1)
                     setShowVehicleForm(false)
