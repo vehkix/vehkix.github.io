@@ -23,6 +23,7 @@ const EmailConfirmationPage = lazy(() => import('./components/EmailConfirmationP
 const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
 const ProfilePanel = lazy(() => import('./components/ProfilePanel'))
+const ProductTour = lazy(() => import('./components/ProductTour'))
 const PublicVehicleSharePage = lazy(() => import('./components/PublicVehicleSharePage'))
 const VehicleForm = lazy(() => import('./components/VehicleForm'))
 const VehicleList = lazy(() => import('./components/VehicleList'))
@@ -52,6 +53,7 @@ function App() {
     section: 'own' | 'shared'
   } | null>(null)
   const [showVehicleForm, setShowVehicleForm] = useState(false)
+  const [showProductTour, setShowProductTour] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
   const [showProfile, setShowProfile] = useState(false)
@@ -359,6 +361,42 @@ function App() {
 
 
   const username = session?.user.user_metadata.username || session?.user.email || ''
+
+  useEffect(() => {
+    if (!session?.user.id || !collectionView || myVehiclesLoading || myVehiclesError || showProfile || showVehicleForm) {
+      return
+    }
+
+    const tourKey = `vehkix:collection-tour:${session.user.id}:completed`
+    const timer = window.setTimeout(() => {
+      try {
+        if (localStorage.getItem(tourKey) !== 'true') setShowProductTour(true)
+      } catch {
+        setActionError('Your browser could not read tour preferences. You can still use the Help button to take the tour.')
+        setShowProductTour(true)
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [
+    session?.user.id,
+    collectionView,
+    myVehiclesLoading,
+    myVehiclesError,
+    showProfile,
+    showVehicleForm,
+  ])
+
+  function closeProductTour() {
+    if (session?.user.id) {
+      try {
+        localStorage.setItem(`vehkix:collection-tour:${session.user.id}:completed`, 'true')
+      } catch {
+        setActionError('Your browser could not save tour preferences. You can reopen the tour from Help.')
+      }
+    }
+    setShowProductTour(false)
+  }
+
   useEffect(() => {
     if (!profileMenuOpen) return
 
@@ -395,6 +433,15 @@ function App() {
           )}
           {session && !showEmailConfirmation && (
             <>
+              {collectionView && !showVehicleForm && (
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setShowProductTour(true)}
+                >
+                  Help
+                </button>
+              )}
               <Suspense fallback={null}>
                 <NotificationBell
                   userId={session.user.id}
@@ -856,6 +903,11 @@ function App() {
             onGoHome={() => navigateToView('collection')}
           />
         </Suspense>
+      )}
+      {session && showProductTour && (
+      <Suspense fallback={null}>
+        <ProductTour onClose={closeProductTour} />
+      </Suspense>
       )}
       {!publicShareView && <footer className="site-footer">
         <a href="#emergency-contacts">Emergency contacts</a>
