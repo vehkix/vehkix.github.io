@@ -27,7 +27,7 @@ function isPublicShareLink(value: unknown): value is PublicShareLink {
 function publicShareUrl(shareId: string) {
   const baseUrl = import.meta.env.DEV
     ? new URL(window.location.pathname, window.location.origin)
-    : new URL('https://vehkix.github.io/')
+    : new URL('https://vehkix.vercel.app/')
   const url = baseUrl
   url.searchParams.set('s', shareId)
   return url.toString()
