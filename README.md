@@ -40,16 +40,16 @@ on conflict (user_id) do nothing;
 5. Re-running the SQL migration is safe for existing vehicle rows; it adds/updates profile, notification, sharing, and deletion-request tables, database functions, the scheduled account-deletion purge, Storage policies, and row-level security policies. Existing shares stay accepted; new shares require recipient approval.
 6. Files `supabase/09-legacy-vehicles-schema.sql` and `supabase/10-legacy-vehicles-public-read.sql` are optional and only configure the legacy public `vehicles` table; this interface does not read that table. They do not insert sample data. `supabase/optional-reset-legacy-vehicles.sql` is a separate destructive reset that permanently deletes all rows from that table. Run it only when you intentionally want to erase those rows, before running file 09.
 7. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the project URL and publishable/anon key. Never expose a `service_role` key in browser code or GitHub Pages settings.
-8. In **Authentication > URL Configuration**, set the **Site URL** to `https://vehkix.github.io / https://vehkix.vercelapp` and add these **Redirect URLs**:
-   - `https://vehkix.github.io / https://vehkix.vercelapp?password-reset=1`
-   - `https://vehkix.github.io / https://vehkix.vercelapp?email-confirmation=1`
+8. In **Authentication > URL Configuration**, set the **Site URL** to `https://vehkix.github.io / https://vehkix.vercel.app` and add these **Redirect URLs**:
+   - `https://vehkix.github.io / https://vehkix.vercel.app?password-reset=1`
+   - `https://vehkix.github.io / https://vehkix.vercel.app?email-confirmation=1`
    - `http://localhost:5173/?password-reset=1` for local development
    - `http://localhost:5173/?email-confirmation=1` for local development
      In **Authentication > Providers > Email**, enable **Confirm email**. Signup then sends a confirmation email and shows a dedicated Vehkix inbox page; the email link returns the user to that page, where the confirmed state is shown. Any email provider is accepted if its owner can open the verification email; this does not restrict signup to Gmail. Keep the confirmation/recovery links in the Supabase email templates (normally `{{ .ConfirmationURL }}`). The login screen's **Forgot password?** link also returns users to Vehkix to enter and confirm a new password. For reliable delivery, configure a custom SMTP provider in **Authentication > SMTP Settings**.
 
 ## GitHub Pages
 
-The built site is published from the `gh-pages` branch at `https://vehkix.github.io / https://vehkix.vercelapp`. GitHub Actions is not used.
+The built site is published from the `gh-pages` branch at `https://vehkix.github.io / https://vehkix.vercel.app`. GitHub Actions is not used.
 
 1. In the repository's **Settings > Pages**, set **Source** to **Deploy from a branch**, choose `gh-pages`, and choose `/(root)`.
 2. Commit and push source changes to `main`, then run `npm run deploy`. It builds `docs/` and publishes it to `gh-pages`; the first run creates that branch.
