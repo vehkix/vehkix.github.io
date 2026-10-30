@@ -876,18 +876,12 @@ function App() {
       )}
       {!publicShareView && showAbout && (
         <Suspense fallback={<p className="empty-state" role="status">Loading About Vehkix…</p>}>
-          <AboutPage
-            isSignedIn={Boolean(session)}
-            onGoHome={() => navigateToView('collection')}
-          />
+          <AboutPage />
         </Suspense>
       )}
       {!publicShareView && showEmergencyContacts && (
         <Suspense fallback={<p className="empty-state" role="status">Loading emergency contacts…</p>}>
-          <EmergencyContactsPage
-            isSignedIn={Boolean(session)}
-            onGoHome={() => navigateToView('collection')}
-          />
+          <EmergencyContactsPage />
         </Suspense>
       )}
       {session && showProductTour && (

@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabaseClient } from '../lib/supabase'
 import './AboutPage.css'
 
-interface AboutPageProps {
-  isSignedIn: boolean
-  onGoHome: () => void
-}
-
-function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
+function AboutPage() {
   const statsSection = useRef<HTMLElement | null>(null)
   const [stats, setStats] = useState<{ users: number; vehicles: number } | null>(null)
   const [animatedStats, setAnimatedStats] = useState({ users: 0, vehicles: 0 })
@@ -102,16 +97,6 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
           Keep your vehicles, important dates, photos, and shared records organized in one
           place—so it is easier to know what needs attention and who can help.
         </p>
-        <a
-          className="primary-action"
-          href="#top"
-          onClick={(event) => {
-            event.preventDefault()
-            onGoHome()
-          }}
-        >
-          {isSignedIn ? 'Go back home' : 'Explore Vehkix'}
-        </a>
       </header>
 
       <section className="about-intro" aria-labelledby="about-why-title">
@@ -172,6 +157,13 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
             </p>
           </li>
           <li>
+            <h3>Find a vehicle quickly</h3>
+            <p>
+              Search across vehicles you own and those shared with you, then switch between
+              your own and shared collections.
+            </p>
+          </li>
+          <li>
             <h3>Stay ahead of important dates</h3>
             <p>
               See upcoming and overdue service or document renewals, with a quick view of
@@ -202,21 +194,28 @@ function AboutPage({ isSignedIn, onGoHome }: AboutPageProps) {
           <li>
             <h3>Print or save a tailored record</h3>
             <p>
-              Choose the vehicle details to include in a clean printout or save as a PDF
-              for your own records.
+              Edit vehicle details, transfer ownership when available, or choose what to
+              include in a clean printout or PDF.
             </p>
           </li>
           <li>
             <h3>Your account, under your control</h3>
             <p>
-              Update your profile photo and username, change your password, review vehicle
-              shares, and manage account deletion from your profile.
+              Update your profile photo and username, change your password, choose light or
+              dark mode, and manage account settings.
+            </p>
+          </li>
+          <li>
+            <h3>Help when you need it</h3>
+            <p>
+              When signed in, open the in-app product guide for a quick walkthrough of
+              vehicle records, sharing, due dates, and account options.
             </p>
           </li>
           <li>
             <h3>Emergency numbers close at hand</h3>
             <p>
-              Browse Keralamm-priority and India-wide helplines, search by service or number,
+              Browse Keralam-priority and India-wide helplines, search by service or number,
               and tap a contact to call from the <a href="#emergency-contacts">emergency contacts directory</a>.
             </p>
           </li>

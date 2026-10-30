@@ -14,21 +14,6 @@
   margin-bottom: 12px;
 }
 
-.emergency-home-link {
-  display: inline-block;
-  margin-bottom: 18px;
-  color: var(--green);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.emergency-home-link:hover,
-.emergency-home-link:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .emergency-heading > div > p:last-child {
   margin-bottom: 0;
 }
@@ -198,17 +183,21 @@
   }
 
   .emergency-contact {
-    align-items: flex-start;
+    align-items: center;
   }
 }
 
 @media (max-width: 480px) {
   .emergency-contact {
-    flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
 
   .emergency-contact-numbers {
     justify-content: flex-start;
+  }
+
+  .emergency-contact-numbers a {
+    padding: 6px 7px;
+    font-size: 11px;
   }
 }

@@ -157,7 +157,7 @@ function AppHeader({
             </div>
           </>
         )}
-        {!showEmailConfirmation && (
+        {session && !showEmailConfirmation && (
           <div className="mobile-nav-menu" ref={mobileNavRef}>
             <button
               className="mobile-nav-trigger"
@@ -218,7 +218,7 @@ function AppHeader({
         )}
         {!showEmailConfirmation && (
           <button
-            className="theme-toggle"
+            className={`theme-toggle${session ? '' : ' theme-toggle-standalone'}`}
             type="button"
             aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
             aria-pressed={darkMode}

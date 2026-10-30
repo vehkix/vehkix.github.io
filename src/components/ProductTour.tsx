@@ -5,7 +5,7 @@ const tourSteps = [
   {
     eyebrow: 'Welcome to Vehkix',
     title: 'Your vehicles, all in one place.',
-    description: 'Keep your vehicle details, documents, and upcoming maintenance together in a private collection.',
+    description: 'Keep photos, vehicle details, service records and renewal dates together in your private collection.',
     highlight: 'collection',
     notice: 'Look at your vehicle card',
   },
@@ -26,30 +26,44 @@ const tourSteps = [
   {
     eyebrow: 'Step 3',
     title: 'Stay ahead of due dates.',
-    description: 'The collection summary shows items due soon. Open it to see the dates and which vehicle needs attention.',
+    description: 'Track service and mileage, PUCC, insurance, tax and registration dates. The collection summary shows what needs attention soon.',
     highlight: 'due',
     notice: 'Check “due soon” here',
   },
   {
     eyebrow: 'Step 4',
     title: 'Share with confidence.',
-    description: 'Give trusted people access to selected vehicle details without giving away control of your collection.',
+    description: 'Choose which details trusted people can view or manage. You stay in control of your vehicle and its access.',
     highlight: 'sharing',
     notice: 'Use Shared details',
   },
   {
     eyebrow: 'Step 5',
-    title: 'Share when you need to.',
-    description: 'Use a vehicle’s actions to share or export its details. You can come back to this tour any time from Help.',
+    title: 'Handle share requests.',
+    description: 'New vehicle shares appear in the notification bell. Review each request and accept or decline it.',
+    highlight: 'requests',
+    notice: 'Review requests in Notifications',
+  },
+  {
+    eyebrow: 'Step 6',
+    title: 'Manage each vehicle.',
+    description: 'Use its actions to edit, share selected details, transfer when permitted, or create a print-ready PDF.',
     highlight: 'actions',
     notice: 'Open the ••• actions menu',
   },
   {
-    eyebrow: 'Step 6',
+    eyebrow: 'Step 7',
     title: 'Make Vehkix yours.',
-    description: 'Update your profile photo, username, password, and account preferences whenever you need to.',
+    description: 'Update your profile photo, username and password, or switch between light and dark themes.',
     highlight: 'profile',
     notice: 'Open your profile',
+  },
+  {
+    eyebrow: 'Step 8',
+    title: 'Explore and find help.',
+    description: 'The footer links to About Vehkix and Emergency contacts, with Kerala-priority and India-wide helplines you can tap to call.',
+    highlight: 'emergency',
+    notice: 'Explore the footer links',
   },
 ] as const
 
@@ -89,26 +103,19 @@ function ProductTour({ onClose }: ProductTourProps) {
         </button>
       </div>
 
-      <div className="product-tour-content" key={step.title}>
+      <div className="product-tour-content">
         <div className="product-tour-copy">
           <p className="product-tour-eyebrow">{step.eyebrow}</p>
           <h2 id="product-tour-title">{step.title}</h2>
           <p id="product-tour-description">{step.description}</p>
-          <div className="tour-feature-list" aria-label="Tour highlights">
-            <span><i aria-hidden="true">✦</i> Private by design</span>
-            <span><i aria-hidden="true">↗</i> Ready when you are</span>
-          </div>
         </div>
 
         <div className="tour-preview" aria-label="Sample Vehkix collection preview">
-          <div className={`tour-preview-callout tour-preview-callout-${step.highlight}`} aria-live="polite">
+          <div className={`tour-preview-callout tour-preview-callout-${step.highlight}`}>
             <span className="tour-preview-callout-dot" aria-hidden="true" />
             <span>{step.notice}</span>
             <i aria-hidden="true" />
           </div>
-          <span className="tour-preview-glow" aria-hidden="true" />
-          <span className="tour-floating-chip tour-floating-chip-one" aria-hidden="true">YOUR GARAGE</span>
-          <span className="tour-floating-chip tour-floating-chip-two" aria-hidden="true">LIVE</span>
           {step.highlight === 'profile' ? (
             <div className="tour-profile-preview">
               <div className="tour-profile-avatar">A</div>
@@ -118,6 +125,22 @@ function ProductTour({ onClose }: ProductTourProps) {
                 <small>Profile settings</small>
               </div>
               <b>✎</b>
+            </div>
+          ) : step.highlight === 'emergency' ? (
+            <div className="tour-emergency-preview">
+              <span>ABOUT & EMERGENCY CONTACTS</span>
+              <strong>Useful links in the footer</strong>
+              <p>Learn more about Vehkix</p>
+              <p>Kerala-priority contacts</p>
+              <p>India-wide helplines</p>
+              <small>Tap a number to call</small>
+            </div>
+          ) : step.highlight === 'requests' ? (
+            <div className="tour-emergency-preview">
+              <span>NOTIFICATIONS</span>
+              <strong>Review a vehicle share</strong>
+              <p>A person shared a vehicle with you</p>
+              <small>Accept or decline the request</small>
             </div>
           ) : (
           <>
@@ -165,14 +188,8 @@ function ProductTour({ onClose }: ProductTourProps) {
       </div>
 
       <div className="product-tour-footer">
-        <div className="product-tour-progress" aria-label={`Step ${stepIndex + 1} of ${tourSteps.length}`}>
-          {tourSteps.map((tourStep, index) => (
-            <span
-              className={index === stepIndex ? 'is-current' : index < stepIndex ? 'is-complete' : ''}
-              key={tourStep.title}
-            />
-          ))}
-          <span className="product-tour-step-count">{stepIndex + 1} / {tourSteps.length}</span>
+        <div className="product-tour-progress" aria-live="polite">
+          Step {stepIndex + 1} of {tourSteps.length}
         </div>
         <div className="product-tour-actions">
           <button className="product-tour-skip" type="button" onClick={onClose}>Skip tour</button>

@@ -197,7 +197,7 @@
 }
 
 @media (max-width: 920px) {
-  .theme-toggle {
+  .theme-toggle:not(.theme-toggle-standalone) {
     display: none;
   }
 
@@ -215,6 +215,16 @@
   .topbar .wordmark img {
     width: clamp(112px, 35vw, 138px);
     height: clamp(32px, 10vw, 38px);
+  }
+
+  .topbar .wordmark-icon {
+    flex: 0 0 44px;
+    justify-content: center;
+  }
+
+  .topbar .wordmark-icon img {
+    width: 42px;
+    height: 42px;
   }
 
   .topbar-actions {

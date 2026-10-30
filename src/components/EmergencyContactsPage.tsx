@@ -54,12 +54,7 @@ const countNumbers = (contacts: EmergencyContact[]) => (
   contacts.reduce((total, contact) => total + contact.numbers.length, 0)
 )
 
-interface EmergencyContactsPageProps {
-  isSignedIn: boolean
-  onGoHome: () => void
-}
-
-function EmergencyContactsPage({ isSignedIn, onGoHome }: EmergencyContactsPageProps) {
+function EmergencyContactsPage() {
   const [activeRegion, setActiveRegion] = useState<'Keralam' | 'india'>('Keralam')
   const [searchQuery, setSearchQuery] = useState('')
   const contacts = activeRegion === 'Keralam' ? KeralamContacts : indiaContacts
@@ -77,16 +72,6 @@ function EmergencyContactsPage({ isSignedIn, onGoHome }: EmergencyContactsPagePr
     <section className="emergency-directory fleet" aria-labelledby="emergency-title">
       <header className="emergency-heading">
         <div>
-          <a
-            className="emergency-home-link"
-            href="#top"
-            onClick={(event) => {
-              event.preventDefault()
-              onGoHome()
-            }}
-          >
-            {isSignedIn ? 'Go back home' : 'Explore Vehkix'}
-          </a>
           <p className="eyebrow">KEEP THESE NUMBERS HANDY</p>
           <h1 id="emergency-title">Emergency contacts</h1>
           <p>Tap a number to call. If you need urgent help in India, call 112.</p>

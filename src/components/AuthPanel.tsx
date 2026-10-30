@@ -85,7 +85,7 @@ function AuthPanel({ onSubmit, onForgotPassword, onSignupPending }: AuthPanelPro
                 required
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="e.g. fayis_dev"
+                placeholder="e.g. fayisdotdev"
               />
               <small>3–32 letters, numbers, or underscores</small>
             </label>
