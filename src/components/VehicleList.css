@@ -902,8 +902,12 @@
 
 .expand-icon {
   position: relative;
+  display: inline-grid;
   width: 14px;
   height: 14px;
+  box-sizing: border-box;
+  flex: 0 0 14px;
+  place-items: center;
   border: 1px solid currentColor;
   border-radius: 50%;
 }
@@ -911,21 +915,21 @@
 .expand-icon::before,
 .expand-icon::after {
   position: absolute;
-  top: 6px;
-  left: 3px;
   width: 6px;
   height: 1px;
   background: currentColor;
   content: '';
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
 }
 
 .expand-icon::after {
-  transform: rotate(90deg);
+  transform: translate(-50%, -50%) rotate(90deg);
   transition: transform 150ms ease;
 }
 
 .details-toggle[aria-expanded='true'] .expand-icon::after {
-  transform: rotate(0);
+  transform: translate(-50%, -50%) rotate(0);
 }
 
 .expanded-details {
@@ -1100,6 +1104,33 @@
     border: 1px solid rgb(42 91 67 / 8%);
     border-radius: 12px;
     background: rgb(246 249 245 / 82%);
+  }
+
+  html[data-theme='dark'] .vehicle-row {
+    border-color: var(--line);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 22%);
+  }
+
+  html[data-theme='dark'] .vehicle-detail {
+    border-color: var(--line);
+    background: var(--surface-strong);
+  }
+
+  html[data-theme='dark'] .status {
+    border-color: rgb(157 196 122 / 22%);
+    background: rgb(157 196 122 / 10%);
+  }
+
+  html[data-theme='dark'] .status.due-soon {
+    border-color: rgb(230 180 94 / 32%);
+    color: #e6b45e;
+    background: rgb(163 101 18 / 18%);
+  }
+
+  html[data-theme='dark'] .status.overdue {
+    border-color: rgb(231 122 112 / 32%);
+    color: #ef938b;
+    background: rgb(179 58 50 / 18%);
   }
 
   .detail-label {

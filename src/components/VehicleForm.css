@@ -203,7 +203,16 @@
   font-weight: 600;
 }
 
-.image-preview-controls input {
+.vehicle-form .image-preview-controls input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  appearance: auto;
   accent-color: var(--green);
 }
 

@@ -28,6 +28,9 @@ interface SelectedImage {
 
 type RegistrationSeparator = '-' | ' ' | '/' | ''
 
+const acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const maxImageSize = 10 * 1024 * 1024
+
 const registrationSeparators: { value: RegistrationSeparator; label: string }[] = [
   { value: '-', label: 'Hyphen (-)' },
   { value: ' ', label: 'Space' },
@@ -207,25 +210,29 @@ function VehicleForm({
   function handleImageSelection(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
     const selected = Array.from(input.files ?? [])
-    const invalid = selected.find((file) => !file.type.startsWith('image/'))
-    if (invalid) {
-      setError('Choose image files only.')
-      input.value = ''
-      return
+    const accepted: File[] = []
+    const rejected: string[] = []
+
+    for (const file of selected) {
+      if (!acceptedImageTypes.has(file.type)) {
+        rejected.push(`${file.name} (unsupported format)`)
+      } else if (file.size > maxImageSize) {
+        rejected.push(`${file.name} (over 10 MB)`)
+      } else {
+        accepted.push(file)
+      }
     }
-    const oversized = selected.find((file) => file.size > 10 * 1024 * 1024)
-    if (oversized) {
-      setError('Each image must be 10 MB or smaller.')
-      input.value = ''
-      return
-    }
-    const selectedImages = selected.map((file) => {
+
+    const selectedImages = accepted.map((file) => {
       const previewUrl = URL.createObjectURL(file)
       previewUrls.current.add(previewUrl)
       return { id: `new:${crypto.randomUUID()}`, file, previewUrl }
     })
-    setError(null)
-    setImages((current) => [...current, ...selectedImages])
+
+    setError(rejected.length > 0
+      ? `Skipped ${rejected.join(', ')}. Choose JPG, PNG, WebP, or GIF images up to 10 MB each.`
+      : null)
+    if (selectedImages.length > 0) setImages((current) => [...current, ...selectedImages])
     if (!primaryImageKey && selectedImages[0]) setPrimaryImageKey(selectedImages[0].id)
     input.value = ''
   }

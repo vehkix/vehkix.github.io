@@ -171,12 +171,6 @@ function AppHeader({
             </button>
             {mobileNavOpen && (
               <div className="mobile-nav-popover" role="menu" aria-label="Navigation options">
-                <button type="button" role="menuitem" onClick={() => {
-                  setMobileNavOpen(false)
-                  onHome()
-                }}>
-                  Garage
-                </button>
                 <button
                   type="button"
                   role="menuitemcheckbox"
@@ -186,14 +180,14 @@ function AppHeader({
                     onToggleDarkMode()
                   }}
                 >
-                  Dark mode
+                  {darkMode ? 'Light mode' : 'Dark mode'}
                 </button>
                 {collectionView && !showVehicleForm && (
                   <button type="button" role="menuitem" onClick={() => {
                     setMobileNavOpen(false)
                     onHelp()
                   }}>
-                    Help and product tour
+                    Guide
                   </button>
                 )}
                 {isAdmin && (
@@ -202,14 +196,6 @@ function AppHeader({
                     onToggleAdmin()
                   }}>
                     {adminView ? 'My collection' : 'Admin panel'}
-                  </button>
-                )}
-                {showProfile && (
-                  <button type="button" role="menuitem" onClick={() => {
-                    setMobileNavOpen(false)
-                    onHome()
-                  }}>
-                    Home
                   </button>
                 )}
               </div>

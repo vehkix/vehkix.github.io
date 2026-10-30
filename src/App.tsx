@@ -137,8 +137,8 @@ function App() {
   } = useMyVehicles(publicShareView ? null : session, adminView, adminRefreshToken)
 
   useLayoutEffect(() => {
-    if (showAbout) window.scrollTo(0, 0)
-  }, [showAbout])
+    if (showAbout || showEmergencyContacts) window.scrollTo(0, 0)
+  }, [showAbout, showEmergencyContacts])
 
   useEffect(() => {
     if (publicShareView || !supabaseClient || !session?.user.id) return

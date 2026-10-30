@@ -272,6 +272,12 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
     if (!supabaseClient || !session) return 'Sign in before saving a vehicle.'
     const numericFieldError = validateNumericFields(draft)
     if (numericFieldError) return numericFieldError
+    const invalidImage = images.find((image) =>
+      !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(image.type),
+    )
+    if (invalidImage) return `“${invalidImage.name}” is not a supported image. Choose JPG, PNG, WebP, or GIF.`
+    const oversizedImage = images.find((image) => image.size > 10 * 1024 * 1024)
+    if (oversizedImage) return `“${oversizedImage.name}” is larger than the 10 MB limit.`
     const client = supabaseClient
     const editingVehicle = editingVehicleId
       ? records.find((vehicle) => vehicle.id === editingVehicleId)
@@ -284,9 +290,11 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
     const vehicleId = editingVehicle?.id ?? crypto.randomUUID()
     const targetUserId = editingVehicle?.user_id ?? session.user.id
     const uploadedPaths: string[] = []
+    let uploadingImage: File | null = null
 
     try {
       for (const image of images) {
+        uploadingImage = image
         const extension = image.name.includes('.')
           ? image.name.slice(image.name.lastIndexOf('.') + 1).replace(/[^a-zA-Z0-9]/g, '')
           : 'image'
@@ -303,9 +311,10 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
               .remove(uploadedPaths)
             if (cleanupError) console.error('Vehicle image cleanup failed:', cleanupError)
           }
-          return `Could not upload an image (${error.statusCode ?? error.name}): ${error.message}`
+          return `Could not upload “${image.name}” (${error.statusCode ?? error.name}): ${error.message}`
         }
         uploadedPaths.push(path)
+        uploadingImage = null
       }
 
       const imagePaths = [...keptImagePaths, ...uploadedPaths]
@@ -392,7 +401,9 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
           console.error('Vehicle image cleanup failed:', cleanupError)
         }
       }
-      return `Could not save this vehicle: ${describeSaveError(error)}`
+      return uploadingImage
+        ? `Could not upload “${uploadingImage.name}”: ${describeSaveError(error)}`
+        : `Could not save this vehicle: ${describeSaveError(error)}`
     }
   }
 

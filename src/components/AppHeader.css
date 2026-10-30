@@ -208,12 +208,19 @@
 
 @media (max-width: 760px) {
   .header-help,
-  .admin-view-toggle {
+  .admin-view-toggle,
+  .topbar-home-button {
     display: none;
   }
 
+  .topbar .wordmark {
+    min-width: 0;
+    flex: 0 1 auto;
+    justify-content: flex-start;
+  }
+
   .topbar .wordmark img {
-    width: clamp(112px, 35vw, 138px);
+    width: clamp(104px, 32vw, 138px);
     height: clamp(32px, 10vw, 38px);
   }
 
