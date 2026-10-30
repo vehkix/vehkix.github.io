@@ -5,15 +5,6 @@ import '../styles/forms.css'
 import './ProfilePanel.css'
 import ImageWithShimmer, { ImageShimmerPlaceholder } from './ImageWithShimmer'
 import PasswordInput from './PasswordInput'
-import {
-  defaultNotificationPreferences,
-  pushSupport,
-  registerPushSubscription,
-  removeCurrentPushSubscription,
-  showTestNotification,
-  type NotificationPreferences,
-  type ReminderType,
-} from '../lib/pushNotifications'
 
 interface ProfilePanelProps {
   userId: string
@@ -40,7 +31,7 @@ interface AccountVehicleShare {
   status: 'pending' | 'accepted' | 'rejected'
 }
 
-type ProfileSection = 'settings' | 'notifications' | 'sharing'
+type ProfileSection = 'settings' | 'sharing'
 
 const avatarMimeTypes: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -84,47 +75,9 @@ function ProfilePanel({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
-    defaultNotificationPreferences,
-  )
-  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(
-    () => typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported',
-  )
   const usernameAvailability = availability?.candidate === username.trim()
     ? availability.status
     : 'idle'
-
-  useEffect(() => {
-    if (!supabaseClient) return
-    let current = true
-    void Promise.resolve(supabaseClient
-      .from('notification_preferences')
-      .select('enabled, reminder_types, days_before, repeat_mode, notification_time, timezone, quiet_hours_start, quiet_hours_end')
-      .eq('user_id', userId)
-      .maybeSingle()
-    ).then(({ data, error: loadError }) => {
-        if (!current) return
-        if (loadError) {
-          setError('Could not load notification settings. Run 13-push-reminders.sql in Supabase.')
-        } else if (data) {
-          setNotificationPreferences({
-            ...defaultNotificationPreferences,
-            ...data,
-            reminder_types: (data.reminder_types ?? defaultNotificationPreferences.reminder_types) as ReminderType[],
-            days_before: data.days_before ?? defaultNotificationPreferences.days_before,
-    })
-        }
-        setNotificationsLoaded(true)
-      })
-      .catch(() => {
-        if (current) {
-          setError('Could not load notification settings. Check your connection and try again.')
-          setNotificationsLoaded(true)
-        }
-      })
-    return () => { current = false }
-  }, [userId])
 
   useEffect(() => {
     const candidate = username.trim()
@@ -436,70 +389,6 @@ function ProfilePanel({
     }
   }
 
-  async function saveNotificationPreferences(next: NotificationPreferences) {
-    if (!supabaseClient) return
-    setBusy(true)
-    setError(null)
-    setMessage(null)
-    try {
-      const { error: saveError } = await supabaseClient
-        .from('notification_preferences')
-        .upsert({ user_id: userId, ...next, updated_at: new Date().toISOString() })
-      if (saveError) {
-        setError(`Could not save notification settings: ${saveError.message}`)
-        return
-      }
-      setNotificationPreferences(next)
-      setMessage('Notification settings saved.')
-    } catch {
-      setError('Could not save notification settings. Check your connection and try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function enableNotifications() {
-    setBusy(true)
-    setError(null)
-    setMessage(null)
-    try {
-      await registerPushSubscription(userId)
-      setNotificationPermission('granted')
-      await saveNotificationPreferences({ ...notificationPreferences, enabled: true })
-    } catch (notificationError) {
-      setError(notificationError instanceof Error ? notificationError.message : 'Could not enable notifications.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function disableNotifications() {
-    setBusy(true)
-    setError(null)
-    try {
-      await removeCurrentPushSubscription(userId)
-      await saveNotificationPreferences({ ...notificationPreferences, enabled: false })
-    } catch (notificationError) {
-      setError(notificationError instanceof Error ? notificationError.message : 'Could not disable notifications.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  function toggleReminderType(type: ReminderType) {
-    const reminderTypes = notificationPreferences.reminder_types.includes(type)
-      ? notificationPreferences.reminder_types.filter((item) => item !== type)
-      : [...notificationPreferences.reminder_types, type]
-    setNotificationPreferences({ ...notificationPreferences, reminder_types: reminderTypes })
-  }
-
-  function toggleDaysBefore(days: number) {
-    const daysBefore = notificationPreferences.days_before.includes(days)
-      ? notificationPreferences.days_before.filter((item) => item !== days)
-      : [...notificationPreferences.days_before, days].sort((a, b) => b - a)
-    setNotificationPreferences({ ...notificationPreferences, days_before: daysBefore })
-  }
-
   return (
     <section className="profile-panel" aria-labelledby="profile-title">
       <header className="profile-panel-heading">
@@ -647,13 +536,6 @@ function ProfilePanel({
         >
           Shared details
         </button>
-        <button
-          type="button"
-          aria-current={activeSection === 'notifications' ? 'page' : undefined}
-          onClick={() => setActiveSection('notifications')}
-        >
-          Notifications
-        </button>
       </nav>
 
       <div className="profile-panel-content">
@@ -797,93 +679,6 @@ function ProfilePanel({
             </>
           )}
         </section>}
-
-        {activeSection === 'notifications' && (
-          <section className="profile-card profile-notification-card" aria-labelledby="profile-notifications-title">
-            <h3 id="profile-notifications-title">Vehicle reminders</h3>
-            <p>Choose when Vehkix reminds you about important vehicle dates. You can change these settings anytime.</p>
-            <p className="profile-sharing-message">
-              Send test checks notifications on this browser only. Scheduled reminders also require the Supabase reminder function and a scheduler.
-            </p>
-            {!pushSupport() ? (
-              <p className="profile-sharing-message error-state" role="alert">
-                Push notifications are not supported by this browser.
-              </p>
-            ) : (
-              <>
-                <div className="profile-notification-actions">
-                  {notificationPreferences.enabled && notificationPermission === 'granted' ? (
-                    <button className="text-action" type="button" disabled={busy} onClick={() => { void disableNotifications() }}>
-                      Disable on this device
-                    </button>
-                  ) : (
-                    <button className="primary-action" type="button" disabled={busy} onClick={() => { void enableNotifications() }}>
-                      Enable browser notifications
-                    </button>
-                  )}
-                  <button className="text-action" type="button" disabled={busy || notificationPermission !== 'granted'} onClick={() => {
-                    void showTestNotification().then(() => setMessage('Test notification sent.')).catch((testError) => {
-                      setError(testError instanceof Error ? testError.message : 'Could not send a test notification.')
-                    })
-                  }}>
-                    Send test
-                  </button>
-                </div>
-                {notificationPermission === 'denied' && (
-                  <p className="profile-sharing-message error-state" role="alert">
-                    Notifications are blocked in this browser. Allow them in the browser site settings, then try again.
-                  </p>
-                )}
-                {notificationsLoaded && (
-                  <>
-                    <fieldset className="profile-notification-options">
-                      <legend>Remind me about</legend>
-                      {([
-                        ['service', 'Service dates'],
-                        ['pucc', 'PUCC dates'],
-                        ['insurance', 'Insurance renewal'],
-                        ['tax', 'Tax expiry'],
-                        ['registration', 'Registration expiry'],
-                      ] as const).map(([type, label]) => (
-                        <label key={type}>
-                          <input type="checkbox" checked={notificationPreferences.reminder_types.includes(type)} onChange={() => toggleReminderType(type)} />
-                          {label}
-                        </label>
-                      ))}
-                    </fieldset>
-                    <fieldset className="profile-notification-options">
-                      <legend>Days before the due date</legend>
-                      {[30, 14, 7, 3, 1].map((days) => (
-                        <label key={days}>
-                          <input type="checkbox" checked={notificationPreferences.days_before.includes(days)} onChange={() => toggleDaysBefore(days)} />
-                          {days} day{days === 1 ? '' : 's'}
-                        </label>
-                      ))}
-                    </fieldset>
-                    <label className="form-field">
-                      <span>Repeat reminders</span>
-                      <select value={notificationPreferences.repeat_mode} onChange={(event) => setNotificationPreferences({
-                        ...notificationPreferences,
-                        repeat_mode: event.target.value as NotificationPreferences['repeat_mode'],
-                      })}>
-                        <option value="once">Once on each selected day</option>
-                        <option value="daily_until_due">Daily until the due date</option>
-                        <option value="daily_until_complete">Daily until I update the date</option>
-                      </select>
-                    </label>
-                    <div className="profile-notification-time-grid">
-                      <label className="form-field"><span>Notification time</span><input type="time" value={notificationPreferences.notification_time} onChange={(event) => setNotificationPreferences({ ...notificationPreferences, notification_time: event.target.value })} /></label>
-                      <label className="form-field"><span>Timezone</span><input value={notificationPreferences.timezone} onChange={(event) => setNotificationPreferences({ ...notificationPreferences, timezone: event.target.value })} placeholder="Asia/Kolkata" /></label>
-                    </div>
-                    <button className="primary-action" type="button" disabled={busy} onClick={() => { void saveNotificationPreferences(notificationPreferences) }}>
-                      Save reminder settings
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-          </section>
-        )}
 
       </div>
 

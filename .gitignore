@@ -12,11 +12,7 @@ lerna-debug.log*
 .supabase/*
 !.supabase/supabase/
 .supabase/supabase/*
-!.supabase/supabase/13-push-reminders.sql
-!.supabase/functions/
-.supabase/functions/*
-!.supabase/functions/send-vehicle-reminders/
-!.supabase/functions/send-vehicle-reminders/index.ts
+!.supabase/supabase/optional-remove-push-reminders.sql
 
 node_modules
 dist

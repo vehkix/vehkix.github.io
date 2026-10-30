@@ -67,7 +67,7 @@ function App() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
   const [showProfile, setShowProfile] = useState(false)
-  const [profileSection, setProfileSection] = useState<'settings' | 'notifications' | 'sharing'>('settings')
+  const [profileSection, setProfileSection] = useState<'settings' | 'sharing'>('settings')
   const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
   const [adminRefreshToken, setAdminRefreshToken] = useState(0)
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
@@ -512,14 +512,6 @@ function App() {
           setShowVehicleForm(false)
           setEditingVehicle(null)
           setProfileSection('settings')
-          navigateToView('collection')
-        }}
-        onOpenNotificationSettings={() => {
-          setShowAbout(false)
-          setShowProfile(true)
-          setShowVehicleForm(false)
-          setEditingVehicle(null)
-          setProfileSection('notifications')
           navigateToView('collection')
         }}
         onSignOut={() => { void handleSignOut() }}
