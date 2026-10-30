@@ -1,6 +1,6 @@
 .vehicle-list {
   margin-top: 16px;
-  border-top: 1px solid var(--line);
+  border-top: 0;
 }
 
 .vehicle-owner-group + .vehicle-owner-group {
@@ -50,7 +50,19 @@
   align-items: center;
   gap: 16px;
   min-height: 108px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(35 58 43 / 5%);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.vehicle-row:hover {
+  border-color: rgb(42 91 67 / 18%);
+  box-shadow: 0 16px 34px rgb(35 58 43 / 10%);
+  transform: translateY(-2px);
 }
 
 .vehicle-cover {
@@ -999,7 +1011,7 @@
     position: relative;
     grid-template-columns: 96px minmax(0, 1fr);
     gap: 18px 12px;
-    padding: 19px 0;
+    padding: 16px;
   }
 
   .vehicle-cover {

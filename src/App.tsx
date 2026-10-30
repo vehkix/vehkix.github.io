@@ -1,5 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import brandMark from '../images/logo/vehkix-mark-color.png'
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import brandWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
 import { supabaseClient } from './lib/supabase'
 import { useAdminAccess } from './hooks/useAdminAccess'
@@ -7,12 +6,11 @@ import { useAuthSession } from './hooks/useAuthSession'
 import { useMyVehicles } from './hooks/useMyVehicles'
 import { useAdminUserManagement } from './hooks/useAdminUserManagement'
 import { useVehicleFieldSettings } from './hooks/useVehicleFieldSettings'
-import { getUsernameInitials } from './lib/profile'
+import AppHeader from './components/AppHeader'
 import { formatDate, getDueItems, getVehicleName, toVehicleDraft } from './lib/vehicle'
 import { vehicleFieldDefinitions } from './lib/vehicleSettings'
 import type { AdminSection } from './types/admin'
 import type { Vehicle, VehicleDraft } from './types/vehicle'
-import ImageWithShimmer from './components/ImageWithShimmer'
 import './styles/page.css'
 
 const AdminPanel = lazy(() => import('./components/AdminPanel'))
@@ -20,7 +18,6 @@ const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPanel = lazy(() => import('./components/AuthPanel'))
 const EmergencyContactsPage = lazy(() => import('./components/EmergencyContactsPage'))
 const EmailConfirmationPage = lazy(() => import('./components/EmailConfirmationPage'))
-const NotificationBell = lazy(() => import('./components/NotificationBell'))
 const PasswordRecoveryPanel = lazy(() => import('./components/PasswordRecoveryPanel'))
 const ProfilePanel = lazy(() => import('./components/ProfilePanel'))
 const ProductTour = lazy(() => import('./components/ProductTour'))
@@ -57,8 +54,6 @@ function App() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
   const [showProfile, setShowProfile] = useState(false)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
   const [adminRefreshToken, setAdminRefreshToken] = useState(0)
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
@@ -397,148 +392,44 @@ function App() {
     setShowProductTour(false)
   }
 
-  useEffect(() => {
-    if (!profileMenuOpen) return
-
-    function closeOnOutsidePointer(event: PointerEvent) {
-      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
-        setProfileMenuOpen(false)
-      }
-    }
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setProfileMenuOpen(false)
-    }
-
-    document.addEventListener('pointerdown', closeOnOutsidePointer)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePointer)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [profileMenuOpen])
-
   return (
     <main className="page-shell">
-      <header className="topbar">
-        {!publicShareView && (session || showAbout || showEmergencyContacts || showEmailConfirmation) && (
-          <span className="wordmark"><img src={brandMark} alt="Vehkix" /></span>
-        )}
-        {!publicShareView && <div className="topbar-actions">
-          {(!supabaseClient || !authReady) && (
-            <span className="data-status" data-state={!supabaseClient ? 'error' : 'connecting'}>
-              <span aria-hidden="true" />
-              {!supabaseClient ? 'SETUP REQUIRED' : 'CONNECTING'}
-            </span>
-          )}
-          {session && !showEmailConfirmation && (
-            <>
-              {collectionView && !showVehicleForm && (
-                <button
-                  className="text-action"
-                  type="button"
-                  onClick={() => setShowProductTour(true)}
-                >
-                  Help
-                </button>
-              )}
-              <Suspense fallback={null}>
-                <NotificationBell
-                  userId={session.user.id}
-                  onOpenDeletionRequests={() => {
-                    setShowProfile(false)
-                    navigateToView('admin')
-                    handleAdminSectionChange('deletion-requests')
-                  }}
-                  onVehicleShareResponded={() => {
-                    setAdminRefreshToken((token) => token + 1)
-                  }}
-                />
-              </Suspense>
-              {isAdmin && (
-                <button
-                  className="text-action admin-view-toggle"
-                  type="button"
-                  aria-pressed={adminView}
-                  onClick={() => {
-                    setShowProfile(false)
-                    navigateToView(adminView ? 'collection' : 'admin')
-                    setAdminSection('overview')
-                    setQuery('')
-                  }}
-                >
-                  {adminView ? 'My collection' : 'Admin panel'}
-                </button>
-              )}
-              {showProfile && (
-                <button className="topbar-home-button" type="button" onClick={() => setShowProfile(false)}>
-                  Home
-                </button>
-              )}
-              <div className="profile-menu" ref={profileMenuRef}>
-                <button
-                  className="profile-menu-trigger"
-                  type="button"
-                  aria-label="Open profile menu"
-                  aria-expanded={profileMenuOpen}
-                  aria-haspopup="menu"
-                  onClick={() => setProfileMenuOpen((open) => !open)}
-                >
-                  <span
-                    className={`profile-tab-avatar${profileAvatar?.userId === session.user.id && profileAvatar.revision === profileAvatarRevision && profileAvatar.status === 'photo' ? ' has-photo' : ''}`}
-                    aria-hidden="true"
-                  >
-                    {profileAvatar?.userId === session.user.id
-                      && profileAvatar.revision === profileAvatarRevision
-                      && profileAvatar.status === 'photo'
-                      && profileAvatar.url
-                      ? <ImageWithShimmer
-                        key={profileAvatar.url}
-                        className="profile-tab-avatar-image"
-                        src={profileAvatar.url}
-                        alt=""
-                      />
-                      : profileAvatar?.userId === session.user.id
-                        && profileAvatar.revision === profileAvatarRevision
-                        && profileAvatar.status === 'none'
-                        ? getUsernameInitials(username)
-                        : null}
-                  </span>
-                </button>
-                {profileMenuOpen && (
-                  <div className="profile-menu-popover" role="menu" aria-label="Profile options">
-                    <span className="profile-menu-username" role="presentation">{username}</span>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setShowAbout(false)
-                        setShowProfile(true)
-                        setShowVehicleForm(false)
-                        setEditingVehicle(null)
-                        setProfileMenuOpen(false)
-                        navigateToView('collection')
-                      }}
-                    >
-                      Profile
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setProfileMenuOpen(false)
-                        void handleSignOut()
-                      }}
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>}
-      </header>
+      <AppHeader
+        publicShareView={publicShareView}
+        session={session}
+        username={username}
+        authReady={authReady}
+        isAdmin={isAdmin}
+        adminView={adminView}
+        collectionView={collectionView}
+        showProfile={showProfile}
+        showEmailConfirmation={showEmailConfirmation}
+        showVehicleForm={showVehicleForm}
+        profileAvatar={profileAvatar}
+        profileAvatarRevision={profileAvatarRevision}
+        onHelp={() => setShowProductTour(true)}
+        onOpenDeletionRequests={() => {
+          setShowProfile(false)
+          navigateToView('admin')
+          handleAdminSectionChange('deletion-requests')
+        }}
+        onVehicleShareResponded={() => setAdminRefreshToken((token) => token + 1)}
+        onToggleAdmin={() => {
+          setShowProfile(false)
+          navigateToView(adminView ? 'collection' : 'admin')
+          setAdminSection('overview')
+          setQuery('')
+        }}
+        onHome={() => setShowProfile(false)}
+        onOpenProfile={() => {
+          setShowAbout(false)
+          setShowProfile(true)
+          setShowVehicleForm(false)
+          setEditingVehicle(null)
+          navigateToView('collection')
+        }}
+        onSignOut={() => { void handleSignOut() }}
+      />
 
       <section
         className="fleet"
@@ -664,10 +555,6 @@ function App() {
 
         {!publicShareView && authReady && !supabaseClient && (
           <p className="empty-state error-state" role="alert">Supabase is not configured, so your private collection is unavailable.</p>
-        )}
-
-        {!publicShareView && session && adminAccessLoading && (
-          <p className="empty-state" role="status">Loading your workspace…</p>
         )}
 
         {!publicShareView && session && showProfile && (

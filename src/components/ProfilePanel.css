@@ -1,14 +1,22 @@
 .profile-panel {
   display: grid;
   gap: 22px;
-  padding: 28px 0;
-  border-block: 1px solid var(--line);
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 82%);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(191 212 84 / 16%), transparent 18rem),
+    rgb(255 255 255 / 58%);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .profile-panel-heading {
   display: flex;
   align-items: center;
   gap: 16px;
+  padding-bottom: 6px;
 }
 
 .profile-panel-heading .eyebrow {
@@ -56,15 +64,18 @@
 
 .profile-section-tabs {
   display: flex;
-  gap: 4px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgb(255 255 255 / 62%);
 }
 
 .profile-section-tabs button {
-  padding: 9px 12px;
-  border: 0;
-  border-bottom: 2px solid transparent;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -74,8 +85,10 @@
 }
 
 .profile-section-tabs button[aria-current='page'] {
-  border-bottom-color: var(--green);
+  border-color: rgb(42 91 67 / 15%);
   color: var(--green);
+  background: #fff;
+  box-shadow: 0 4px 12px rgb(42 91 67 / 8%);
 }
 
 .profile-section-tabs button:focus-visible {
@@ -100,10 +113,11 @@
   flex: 0 0 64px;
   overflow: hidden;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 4px solid rgb(255 255 255 / 88%);
   border-radius: 50%;
   color: var(--white);
   background: var(--green);
+  box-shadow: 0 10px 24px rgb(42 91 67 / 20%);
   cursor: pointer;
   font-size: 20px;
   font-weight: 700;
@@ -181,9 +195,17 @@
   display: grid;
   align-content: start;
   gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  background: var(--white);
+  padding: 22px;
+  border: 1px solid rgb(255 255 255 / 85%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 10px 26px rgb(35 58 43 / 6%);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.profile-card:hover {
+  box-shadow: 0 16px 32px rgb(35 58 43 / 10%);
+  transform: translateY(-2px);
 }
 
 .profile-card h3 {
@@ -349,7 +371,7 @@
 .profile-danger-action {
   padding: 9px 12px;
   border: 1px solid #a3342e;
-  border-radius: 2px;
+  border-radius: 9px;
   color: #a3342e;
   background: var(--white);
   cursor: pointer;
@@ -375,6 +397,10 @@
 }
 
 @media (max-width: 650px) {
+  .profile-panel {
+    padding: 18px;
+    border-radius: 18px;
+  }
   .profile-panel-content {
     grid-template-columns: 1fr;
   }

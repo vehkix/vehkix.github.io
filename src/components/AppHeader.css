@@ -1,0 +1,107 @@
+.wordmark {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.wordmark-name {
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+
+.wordmark-guest { cursor: default; }
+
+.topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 20;
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 10px 14px 10px 18px;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 66%);
+  box-shadow: 0 14px 40px rgb(34 55 42 / 9%), inset 0 1px 0 rgb(255 255 255 / 80%);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.topbar::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, rgb(255 255 255 / 48%), rgb(233 243 223 / 24%));
+  content: '';
+}
+
+.topbar-actions {
+  gap: 10px;
+}
+
+.topbar-actions .text-action,
+.topbar-home-button {
+  min-height: 40px;
+  padding-inline: 12px;
+  border-radius: 10px;
+}
+
+.topbar-actions .text-action:hover,
+.topbar-home-button:hover {
+  color: var(--ink);
+  background: rgb(237 244 232 / 78%);
+}
+
+.profile-menu-trigger {
+  width: 44px;
+  height: 44px;
+}
+
+.profile-tab-avatar {
+  width: 34px;
+  height: 34px;
+  border-color: rgb(255 255 255 / 80%);
+  box-shadow: 0 2px 8px rgb(42 91 67 / 16%);
+}
+
+.profile-menu-popover {
+  border-radius: 14px;
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    top: 8px;
+    min-height: 58px;
+    padding: 7px 8px 7px 12px;
+    border-radius: 16px;
+  }
+
+  .wordmark-name,
+  .header-help,
+  .admin-view-toggle {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 2px;
+  }
+
+  .topbar-actions .text-action,
+  .topbar-home-button {
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+}

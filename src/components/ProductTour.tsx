@@ -7,30 +7,49 @@ const tourSteps = [
     title: 'Your vehicles, all in one place.',
     description: 'Keep your vehicle details, documents, and upcoming maintenance together in a private collection.',
     highlight: 'collection',
+    notice: 'Look at your vehicle card',
   },
   {
     eyebrow: 'Step 1',
     title: 'Add your first vehicle.',
     description: 'Choose Add vehicle to enter its details, add photos, and record important dates. You can edit everything later.',
     highlight: 'add',
+    notice: 'Tap “+ Add vehicle”',
   },
   {
     eyebrow: 'Step 2',
     title: 'Find things quickly.',
     description: 'Search your collection or switch between your own vehicles and vehicles shared with you.',
     highlight: 'search',
+    notice: 'Try the search field',
   },
   {
     eyebrow: 'Step 3',
     title: 'Stay ahead of due dates.',
     description: 'The collection summary shows items due soon. Open it to see the dates and which vehicle needs attention.',
     highlight: 'due',
+    notice: 'Check “due soon” here',
   },
   {
     eyebrow: 'Step 4',
+    title: 'Share with confidence.',
+    description: 'Give trusted people access to selected vehicle details without giving away control of your collection.',
+    highlight: 'sharing',
+    notice: 'Use Shared details',
+  },
+  {
+    eyebrow: 'Step 5',
     title: 'Share when you need to.',
     description: 'Use a vehicle’s actions to share or export its details. You can come back to this tour any time from Help.',
     highlight: 'actions',
+    notice: 'Open the ••• actions menu',
+  },
+  {
+    eyebrow: 'Step 6',
+    title: 'Make Vehkix yours.',
+    description: 'Update your profile photo, username, password, and account preferences whenever you need to.',
+    highlight: 'profile',
+    notice: 'Open your profile',
   },
 ] as const
 
@@ -70,14 +89,38 @@ function ProductTour({ onClose }: ProductTourProps) {
         </button>
       </div>
 
-      <div className="product-tour-content">
+      <div className="product-tour-content" key={step.title}>
         <div className="product-tour-copy">
           <p className="product-tour-eyebrow">{step.eyebrow}</p>
           <h2 id="product-tour-title">{step.title}</h2>
           <p id="product-tour-description">{step.description}</p>
+          <div className="tour-feature-list" aria-label="Tour highlights">
+            <span><i aria-hidden="true">✦</i> Private by design</span>
+            <span><i aria-hidden="true">↗</i> Ready when you are</span>
+          </div>
         </div>
 
         <div className="tour-preview" aria-label="Sample Vehkix collection preview">
+          <div className={`tour-preview-callout tour-preview-callout-${step.highlight}`} aria-live="polite">
+            <span className="tour-preview-callout-dot" aria-hidden="true" />
+            <span>{step.notice}</span>
+            <i aria-hidden="true" />
+          </div>
+          <span className="tour-preview-glow" aria-hidden="true" />
+          <span className="tour-floating-chip tour-floating-chip-one" aria-hidden="true">YOUR GARAGE</span>
+          <span className="tour-floating-chip tour-floating-chip-two" aria-hidden="true">LIVE</span>
+          {step.highlight === 'profile' ? (
+            <div className="tour-profile-preview">
+              <div className="tour-profile-avatar">A</div>
+              <div>
+                <span>YOUR ACCOUNT</span>
+                <strong>Alex Morgan</strong>
+                <small>Profile settings</small>
+              </div>
+              <b>✎</b>
+            </div>
+          ) : (
+          <>
           <div className="tour-preview-topbar">
             <span className="tour-preview-logo">VEHKIX</span>
             <span className={`tour-preview-summary${step.highlight === 'due' ? ' is-highlighted' : ''}`}>
@@ -108,7 +151,16 @@ function ProductTour({ onClose }: ProductTourProps) {
             </div>
             <span className={`tour-preview-menu${step.highlight === 'actions' ? ' is-highlighted' : ''}`}>•••</span>
           </div>
+          {step.highlight === 'sharing' && (
+            <div className="tour-sharing-preview">
+              <span>SHARED DETAILS</span>
+              <strong>2 people can view your vehicle</strong>
+              <i>Manage access →</i>
+            </div>
+          )}
           <span className="tour-preview-caption">SAMPLE COLLECTION · EXAMPLE DATA</span>
+          </>
+          )}
         </div>
       </div>
 

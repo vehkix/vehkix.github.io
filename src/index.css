@@ -9,6 +9,9 @@
   --display: 'Cabin Variable', 'Trebuchet MS', sans-serif;
   --sans: 'Lato', 'Segoe UI', sans-serif;
   --mono: 'Cascadia Code', Consolas, monospace;
+  --surface: rgb(255 255 255 / 78%);
+  --surface-strong: #fff;
+  --shadow-soft: 0 18px 50px rgb(35 58 43 / 8%);
 
   font: 14px/1.45 var(--sans);
   letter-spacing: 0;
@@ -27,6 +30,26 @@
 body {
   margin: 0;
   min-width: 320px;
+  background:
+    radial-gradient(circle at 8% 0%, rgb(218 237 202 / 62%), transparent 32rem),
+    radial-gradient(circle at 100% 20%, rgb(233 240 220 / 70%), transparent 28rem),
+    var(--page);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgb(191 212 84 / 70%);
+  outline-offset: 3px;
 }
 
 .visually-hidden {
