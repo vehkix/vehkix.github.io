@@ -23,6 +23,7 @@ interface ProfilePanelProps {
   onAvatarChanged: () => void
   onDeletionConfirmed: () => Promise<string | null>
   onSignOut: () => Promise<string | null>
+  initialSection?: ProfileSection
 }
 
 interface DeletionRequest {
@@ -58,9 +59,10 @@ function ProfilePanel({
   onAvatarChanged,
   onDeletionConfirmed,
   onSignOut,
+  initialSection = 'settings',
 }: ProfilePanelProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const [activeSection, setActiveSection] = useState<ProfileSection>('settings')
+  const [activeSection, setActiveSection] = useState<ProfileSection>(initialSection)
   const [username, setUsername] = useState(initialUsername)
   const [savedUsername, setSavedUsername] = useState(initialUsername)
   const [isEditingUsername, setIsEditingUsername] = useState(false)

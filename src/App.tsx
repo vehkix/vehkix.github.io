@@ -54,6 +54,7 @@ function App() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
   const [showProfile, setShowProfile] = useState(false)
+  const [profileSection, setProfileSection] = useState<'settings' | 'notifications' | 'sharing'>('settings')
   const [selectedAdminOwnerId, setSelectedAdminOwnerId] = useState('')
   const [adminRefreshToken, setAdminRefreshToken] = useState(0)
   const [profileAvatarRevision, setProfileAvatarRevision] = useState(0)
@@ -426,6 +427,15 @@ function App() {
           setShowProfile(true)
           setShowVehicleForm(false)
           setEditingVehicle(null)
+          setProfileSection('settings')
+          navigateToView('collection')
+        }}
+        onOpenNotificationSettings={() => {
+          setShowAbout(false)
+          setShowProfile(true)
+          setShowVehicleForm(false)
+          setEditingVehicle(null)
+          setProfileSection('notifications')
           navigateToView('collection')
         }}
         onSignOut={() => { void handleSignOut() }}
@@ -560,6 +570,7 @@ function App() {
         {!publicShareView && session && showProfile && (
           <Suspense fallback={<p className="empty-state" role="status">Loading your profile…</p>}>
             <ProfilePanel
+              key={profileSection}
               userId={session.user.id}
               accountEmail={session.user.email ?? ''}
               initialUsername={username}
@@ -567,6 +578,7 @@ function App() {
               onAvatarChanged={() => setProfileAvatarRevision((revision) => revision + 1)}
               onDeletionConfirmed={handleAccountDeletionConfirmed}
               onSignOut={handleSignOut}
+              initialSection={profileSection}
             />
           </Suspense>
         )}

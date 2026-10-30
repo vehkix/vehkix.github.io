@@ -31,6 +31,7 @@ interface AppHeaderProps {
   onToggleAdmin: () => void
   onHome: () => void
   onOpenProfile: () => void
+  onOpenNotificationSettings: () => void
   onSignOut: () => void
 }
 
@@ -53,6 +54,7 @@ function AppHeader({
   onToggleAdmin,
   onHome,
   onOpenProfile,
+  onOpenNotificationSettings,
   onSignOut,
 }: AppHeaderProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
@@ -137,6 +139,7 @@ function AppHeader({
                 <div className="profile-menu-popover" role="menu" aria-label="Profile options">
                   <span className="profile-menu-username" role="presentation">{username}</span>
                   <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); onOpenProfile() }}>Profile</button>
+                  <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); onOpenNotificationSettings() }}>Notification settings</button>
                   <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); onSignOut() }}>Sign out</button>
                 </div>
               )}
