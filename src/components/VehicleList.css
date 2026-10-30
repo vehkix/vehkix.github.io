@@ -411,15 +411,18 @@
   margin: 5vh auto auto;
   padding: 24px;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 3px;
+  border: 1px solid rgb(255 255 255 / 84%);
+  border-radius: 22px;
   color: var(--muted);
-  background: var(--page);
+  background: rgb(248 251 245 / 96%);
+  box-shadow: 0 24px 80px rgb(23 35 27 / 24%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .vehicle-share-dialog::backdrop {
   background: rgb(20 27 22 / 55%);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px) saturate(115%);
 }
 
 .vehicle-public-links {
@@ -582,8 +585,10 @@
 }
 
 .vehicle-share-heading {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 68%);
 }
 
 .vehicle-share-heading .eyebrow {
@@ -594,7 +599,8 @@
   margin: 0 0 8px;
   color: var(--ink);
   font-family: var(--display);
-  font-size: 23px;
+  font-size: 28px;
+  letter-spacing: -.03em;
 }
 
 .vehicle-share-heading > p:last-child {
@@ -604,8 +610,12 @@
 }
 
 .vehicle-access-manager {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid rgb(255 255 255 / 86%);
+  border-radius: 15px;
+  background: rgb(255 255 255 / 70%);
+  box-shadow: 0 8px 22px rgb(35 58 43 / 5%);
 }
 
 .vehicle-access-manager h3,
@@ -642,7 +652,7 @@
   min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 9px;
   color: var(--ink);
   background: var(--white);
   font: inherit;
@@ -653,7 +663,11 @@
   grid-column: 1 / -1;
   display: grid;
   gap: 10px;
-  padding-top: 8px;
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid rgb(191 212 84 / 32%);
+  border-radius: 12px;
+  background: #f8fbf3;
 }
 
 .vehicle-access-grant > strong {
@@ -698,8 +712,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding: 13px;
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 72%);
 }
 
 .vehicle-access-list li > span {
@@ -771,9 +788,10 @@
 .vehicle-share-section {
   min-width: 0;
   margin: 0;
-  padding: 0;
-  border: 0;
-  border-top: 1px solid var(--line);
+  padding: 16px;
+  border: 1px solid rgb(255 255 255 / 86%);
+  border-radius: 13px;
+  background: rgb(255 255 255 / 72%);
 }
 
 .vehicle-share-section legend {
@@ -823,7 +841,7 @@
   justify-content: flex-end;
   align-items: center;
   gap: 20px;
-  padding-top: 16px;
+  padding: 18px 4px 2px;
   border-top: 1px solid var(--line);
 }
 
@@ -1072,7 +1090,21 @@
   }
 
   .vehicle-share-dialog {
-    padding: 20px;
+    width: min(100vw - 20px, 640px);
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .vehicle-share-heading {
+    padding: 20px 16px;
+  }
+
+  .vehicle-share-heading h2 {
+    font-size: 24px;
+  }
+
+  .vehicle-access-manager {
+    padding: 16px;
   }
 
   .vehicle-share-sections {

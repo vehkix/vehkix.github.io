@@ -2,8 +2,30 @@
   display: grid;
   gap: 24px;
   margin: 8px 0 24px;
-  padding: 24px 0;
-  border-block: 1px solid var(--line);
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 84%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 62%);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.vehicle-form .form-field input,
+.vehicle-form .form-field textarea,
+.vehicle-form .form-field select {
+  border-radius: 10px;
+  border-color: rgb(42 91 67 / 14%);
+  background: rgb(255 255 255 / 84%);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.vehicle-form .form-field input:focus,
+.vehicle-form .form-field textarea:focus,
+.vehicle-form .form-field select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px rgb(42 91 67 / 10%);
+  outline: 0;
 }
 
 .vehicle-dialog {
@@ -13,15 +35,17 @@
   margin: auto;
   padding: 0;
   overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 3px;
+  border: 1px solid rgb(255 255 255 / 82%);
+  border-radius: 22px;
   color: var(--muted);
-  background: var(--page);
+  background: rgb(248 251 245 / 94%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .vehicle-dialog::backdrop {
   background: rgb(20 27 22 / 55%);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px) saturate(115%);
 }
 
 .discard-confirm-backdrop {
@@ -38,8 +62,8 @@
   width: min(100%, 380px);
   padding: 22px;
   border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--page);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 94%);
   box-shadow: 0 18px 60px rgb(20 27 22 / 22%);
 }
 
@@ -67,7 +91,7 @@
 .vehicle-dialog .vehicle-form {
   gap: 22px;
   margin: 0;
-  padding: 24px;
+  padding: 28px;
   border: 0;
 }
 
@@ -84,7 +108,8 @@
   box-sizing: border-box;
   align-items: center;
   padding: 8px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid rgb(42 91 67 / 18%);
+  border-radius: 9px;
   color: var(--green);
   background: var(--white);
   cursor: pointer;
@@ -116,7 +141,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 10px;
   color: var(--ink);
   background: var(--white);
   font-size: 11px;
@@ -143,8 +169,10 @@
   grid-template-columns: 1fr auto;
   gap: 8px;
   padding: 8px;
-  border: 1px solid var(--line);
-  background: var(--white);
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 8px 20px rgb(35 58 43 / 6%);
 }
 
 .image-preview > .image-preview-image {
@@ -211,7 +239,8 @@
   margin: 0 0 8px;
   color: var(--ink);
   font-family: var(--display);
-  font-size: 23px;
+  font-size: 28px;
+  letter-spacing: -.03em;
 }
 
 .form-heading .eyebrow {
@@ -225,7 +254,7 @@
 .vehicle-fieldset {
   min-width: 0;
   margin: 0;
-  padding: 18px 0 0;
+  padding: 22px 0 0;
   border: 0;
   border-top: 1px solid var(--line);
 }
@@ -261,7 +290,7 @@
   padding: 0 8px;
   border: 1px solid var(--line);
   border-left: 0;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 9px 9px 0;
   color: var(--ink);
   background: var(--page);
   font: inherit;
@@ -286,10 +315,17 @@
 
   .vehicle-form {
     gap: 20px;
+    padding: 20px 16px;
+    border-radius: 16px;
   }
 
   .vehicle-dialog .vehicle-form {
     padding: 18px 16px;
+  }
+
+  .vehicle-dialog {
+    width: min(100vw - 20px, 760px);
+    border-radius: 18px;
   }
 
   .file-picker {

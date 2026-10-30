@@ -8,6 +8,15 @@ pnpm-debug.log*
 lerna-debug.log*
 .env
 .supabase
+!.supabase/
+.supabase/*
+!.supabase/supabase/
+.supabase/supabase/*
+!.supabase/supabase/13-push-reminders.sql
+!.supabase/functions/
+.supabase/functions/*
+!.supabase/functions/send-vehicle-reminders/
+!.supabase/functions/send-vehicle-reminders/index.ts
 
 node_modules
 dist

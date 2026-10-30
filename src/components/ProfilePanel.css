@@ -96,6 +96,47 @@
   outline-offset: 2px;
 }
 
+.profile-notification-card {
+  grid-column: 1 / -1;
+}
+
+.profile-notification-actions,
+.profile-notification-time-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.profile-notification-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.profile-notification-options legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-notification-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.profile-notification-time-grid .form-field {
+  flex: 1 1 180px;
+}
+
 .profile-avatar-control {
   display: grid;
   justify-items: center;
@@ -325,6 +366,15 @@
   padding: 0;
   border-top: 1px solid var(--line);
   list-style: none;
+}
+
+.profile-notification-card {
+  grid-column: auto;
+}
+
+.profile-notification-actions {
+  align-items: stretch;
+  flex-direction: column;
 }
 
 .profile-sharing-list li {
