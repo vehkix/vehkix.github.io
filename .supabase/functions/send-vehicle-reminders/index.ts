@@ -1,10 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-)
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabase = createClient(supabaseUrl, serviceRoleKey)
 
 const vapidSubject = Deno.env.get('VAPID_SUBJECT')!
 webpush.setVapidDetails(
@@ -57,7 +56,11 @@ function messageFor(type: string, vehicle: { name: string | null; vehicle_number
     : `${reminder} for ${label} is due in ${days} day${days === 1 ? '' : 's'}.`
 }
 
-Deno.serve(async () => {
+Deno.serve(async (request) => {
+  if (request.headers.get('authorization') !== `Bearer ${serviceRoleKey}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { data: preferences, error: preferencesError } = await supabase
     .from('notification_preferences')
     .select('*')
@@ -69,18 +72,34 @@ Deno.serve(async () => {
     const timezone = preference.timezone || 'UTC'
     const today = localDate(timezone)
     const now = localTime(timezone)
-    if (now !== preference.notification_time?.slice(0, 5)
+    const notificationTime = preference.notification_time?.slice(0, 5)
+    if (!notificationTime
+      || now < notificationTime
       || isQuietHour(now, preference.quiet_hours_start?.slice(0, 5), preference.quiet_hours_end?.slice(0, 5))) {
       continue
     }
-    const { data: vehicles } = await supabase
+    const { data: vehicles, error: vehiclesError } = await supabase
       .from('user_vehicles')
       .select('id, name, vehicle_number, next_service_date, next_pucc_date, insurance_next_renewal_date, tax_valid_upto, registration_validity')
       .eq('user_id', preference.user_id)
-    const { data: subscriptions } = await supabase
+    if (vehiclesError) {
+      console.error('Could not load vehicles for reminder processing.', {
+        userId: preference.user_id,
+        message: vehiclesError.message,
+      })
+      return Response.json({ error: 'Could not load vehicles for reminder processing.' }, { status: 500 })
+    }
+    const { data: subscriptions, error: subscriptionsError } = await supabase
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')
       .eq('user_id', preference.user_id)
+    if (subscriptionsError) {
+      console.error('Could not load push subscriptions.', {
+        userId: preference.user_id,
+        message: subscriptionsError.message,
+      })
+      return Response.json({ error: 'Could not load push subscriptions.' }, { status: 500 })
+    }
     if (!subscriptions?.length) continue
 
     for (const vehicle of vehicles ?? []) {
@@ -94,7 +113,7 @@ Deno.serve(async () => {
           || (preference.repeat_mode === 'daily_until_complete' && days < 0)
         if (!shouldSend) continue
 
-        const { data: existing } = await supabase
+        const { data: existing, error: existingError } = await supabase
           .from('vehicle_reminder_deliveries')
           .select('id')
           .eq('user_id', preference.user_id)
@@ -104,6 +123,15 @@ Deno.serve(async () => {
           .eq('days_before', days)
           .eq('delivery_date', today)
           .maybeSingle()
+        if (existingError) {
+          console.error('Could not check the reminder delivery history.', {
+            userId: preference.user_id,
+            vehicleId: vehicle.id,
+            reminderType: type,
+            message: existingError.message,
+          })
+          return Response.json({ error: 'Could not check the reminder delivery history.' }, { status: 500 })
+        }
         if (existing) continue
 
         const payload = JSON.stringify({
@@ -112,6 +140,7 @@ Deno.serve(async () => {
           tag: `vehkix-${vehicle.id}-${type}-${today}`,
           url: '/',
         })
+        let delivered = false
         for (const subscription of subscriptions) {
           try {
             await webpush.sendNotification({
@@ -119,13 +148,32 @@ Deno.serve(async () => {
               keys: { p256dh: subscription.p256dh, auth: subscription.auth },
             }, payload)
             sent += 1
+            delivered = true
           } catch (error) {
-            if (error instanceof webpush.WebPushError && [404, 410].includes(error.statusCode)) {
-              await supabase.from('push_subscriptions').delete().eq('id', subscription.id)
+            const statusCode = error instanceof webpush.WebPushError ? error.statusCode : undefined
+            console.error('Could not send a vehicle reminder.', {
+              userId: preference.user_id,
+              subscriptionId: subscription.id,
+              statusCode,
+              message: error instanceof Error ? error.message : String(error),
+            })
+            if (statusCode === 404 || statusCode === 410) {
+              const { error: deleteError } = await supabase
+                .from('push_subscriptions')
+                .delete()
+                .eq('id', subscription.id)
+              if (deleteError) {
+                console.error('Could not remove an expired push subscription.', {
+                  subscriptionId: subscription.id,
+                  message: deleteError.message,
+                })
+              }
             }
           }
         }
-        await supabase.from('vehicle_reminder_deliveries').insert({
+        if (!delivered) continue
+
+        const { error: deliveryError } = await supabase.from('vehicle_reminder_deliveries').insert({
           user_id: preference.user_id,
           vehicle_id: vehicle.id,
           reminder_type: type,
@@ -133,6 +181,15 @@ Deno.serve(async () => {
           days_before: days,
           delivery_date: today,
         })
+        if (deliveryError) {
+          console.error('Could not record a vehicle reminder delivery.', {
+            userId: preference.user_id,
+            vehicleId: vehicle.id,
+            reminderType: type,
+            message: deliveryError.message,
+          })
+          return Response.json({ error: 'Could not record a vehicle reminder delivery.' }, { status: 500 })
+        }
       }
     }
   }

@@ -52,16 +52,36 @@
   min-height: 108px;
   margin-bottom: 12px;
   padding: 12px 16px;
-  border: 1px solid rgb(255 255 255 / 90%);
-  border-radius: 16px;
+  border: 1px solid rgb(42 91 67 / 9%);
+  border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: 0 10px 28px rgb(35 58 43 / 5%);
+  animation: vehicle-card-enter 360ms cubic-bezier(.2, .8, .2, 1) both;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.vehicle-row:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.vehicle-row:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+@keyframes vehicle-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .vehicle-row:hover {
   border-color: rgb(42 91 67 / 18%);
-  box-shadow: 0 16px 34px rgb(35 58 43 / 10%);
+  box-shadow: var(--shadow-raised);
   transform: translateY(-2px);
 }
 
@@ -71,7 +91,8 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: var(--white);
+  border-radius: 12px;
+  background: var(--surface-strong);
 }
 
 .vehicle-cover > .vehicle-cover-image {
@@ -207,7 +228,11 @@
   align-items: center;
   justify-self: end;
   gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid rgb(42 91 67 / 10%);
+  border-radius: 999px;
   color: var(--green);
+  background: rgb(42 91 67 / 5%);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -244,10 +269,14 @@
 
 .status.due-soon {
   color: #a36512;
+  border-color: rgb(163 101 18 / 15%);
+  background: rgb(255 244 224 / 78%);
 }
 
 .status.overdue {
   color: #b33a32;
+  border-color: rgb(179 58 50 / 15%);
+  background: rgb(255 238 236 / 80%);
 }
 
 .status.no-date {
@@ -268,12 +297,12 @@
 
 .vehicle-menu-trigger {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: 10px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
@@ -286,7 +315,7 @@
 .vehicle-menu-trigger[aria-expanded='true'] {
   border-color: var(--line);
   color: var(--ink);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .vehicle-menu-trigger:focus-visible {
@@ -307,8 +336,8 @@
   overscroll-behavior: contain;
   padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--white);
+  border-radius: 12px;
+  background: var(--surface-strong);
   box-shadow: 0 8px 20px rgb(22 31 28 / 12%);
 }
 
@@ -354,7 +383,7 @@
   margin: auto;
   padding: 24px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius-panel);
   color: var(--muted);
   background: var(--page);
   box-shadow: 0 18px 60px rgb(20 27 22 / 22%);
@@ -387,9 +416,10 @@
 }
 
 .vehicle-delete-confirm {
-  padding: 9px 12px;
+  min-height: 44px;
+  padding: 9px 14px;
   border: 1px solid #a3342e;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
   color: var(--white);
   background: #a3342e;
   cursor: pointer;
@@ -588,7 +618,7 @@
   padding: 24px;
   border: 1px solid rgb(255 255 255 / 80%);
   border-radius: 16px;
-  background: rgb(255 255 255 / 68%);
+  background: var(--surface);
 }
 
 .vehicle-share-heading .eyebrow {
@@ -614,7 +644,7 @@
   padding: 20px;
   border: 1px solid rgb(255 255 255 / 86%);
   border-radius: 15px;
-  background: rgb(255 255 255 / 70%);
+  background: var(--surface);
   box-shadow: 0 8px 22px rgb(35 58 43 / 5%);
 }
 
@@ -654,7 +684,7 @@
   border: 1px solid var(--line);
   border-radius: 9px;
   color: var(--ink);
-  background: var(--white);
+  background: var(--surface-strong);
   font: inherit;
   font-size: 12px;
 }
@@ -667,7 +697,7 @@
   padding: 16px;
   border: 1px solid rgb(191 212 84 / 32%);
   border-radius: 12px;
-  background: #f8fbf3;
+  background: var(--surface-hover);
 }
 
 .vehicle-access-grant > strong {
@@ -716,7 +746,7 @@
   padding: 13px;
   border: 1px solid rgb(255 255 255 / 90%);
   border-radius: 10px;
-  background: rgb(255 255 255 / 72%);
+  background: var(--surface);
 }
 
 .vehicle-access-list li > span {
@@ -791,7 +821,7 @@
   padding: 16px;
   border: 1px solid rgb(255 255 255 / 86%);
   border-radius: 13px;
-  background: rgb(255 255 255 / 72%);
+  background: var(--surface);
 }
 
 .vehicle-share-section legend {
@@ -853,7 +883,9 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 0 8px 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 9px;
   border: 0;
   color: var(--green);
   background: transparent;
@@ -1008,9 +1040,10 @@
 }
 
 .vehicle-leave-confirm {
-  padding: 9px 12px;
+  min-height: 44px;
+  padding: 9px 14px;
   border: 1px solid #a3342e;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
   color: var(--white);
   background: #a3342e;
   cursor: pointer;
@@ -1024,11 +1057,12 @@
   opacity: 0.65;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .vehicle-row {
     position: relative;
     grid-template-columns: 96px minmax(0, 1fr);
-    gap: 18px 12px;
+    align-items: start;
+    gap: 14px 12px;
     padding: 16px;
   }
 
@@ -1041,14 +1075,40 @@
   .vehicle-main {
     grid-column: 2;
     grid-row: 1;
-    padding-right: 84px;
+    padding-right: 0;
   }
 
   .status-cell {
-    position: absolute;
-    top: 23px;
-    right: 0;
-    max-width: 130px;
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-items: start;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .status {
+    justify-self: start;
+  }
+
+  .vehicle-detail {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    padding: 10px 12px;
+    border: 1px solid rgb(42 91 67 / 8%);
+    border-radius: 12px;
+    background: rgb(246 249 245 / 82%);
+  }
+
+  .detail-label {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .vehicle-detail > span:last-child:empty {
+    display: none;
   }
 
   .row-actions {
@@ -1095,6 +1155,15 @@
     border-radius: 18px;
   }
 
+  .vehicle-row:hover {
+    transform: none;
+  }
+
+  .carousel-control {
+    width: 44px;
+    height: 44px;
+  }
+
   .vehicle-share-heading {
     padding: 20px 16px;
   }
@@ -1138,6 +1207,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .vehicle-row {
+    animation: none;
+  }
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -1173,7 +1248,7 @@
     margin: 0;
     padding: 0;
     color: #20251f;
-    background: #fff;
+    background: var(--surface-strong);
     font-family: Georgia, 'Times New Roman', serif;
   }
 

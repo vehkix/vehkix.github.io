@@ -3,7 +3,7 @@
   margin: 74px auto 96px;
   padding: 32px;
   border: 1px solid var(--line);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .email-confirmation-page h1 {

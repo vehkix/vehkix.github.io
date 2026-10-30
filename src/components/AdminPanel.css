@@ -109,7 +109,7 @@
 .admin-section-link[aria-current='page'] {
   border-left-color: var(--green);
   color: var(--green);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .admin-nav-section-label {
@@ -200,7 +200,7 @@
 .admin-field-tab[aria-selected='true'] {
   border-left-color: var(--green);
   color: var(--green);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .admin-field-tab:focus-visible {
@@ -232,7 +232,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .admin-field-row {
@@ -337,7 +337,7 @@
   margin: 16px 0 8px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .admin-account-search input {
@@ -433,7 +433,7 @@
   padding: 8px 10px;
   border: 1px solid var(--line);
   color: var(--ink);
-  background: var(--white);
+  background: var(--surface-strong);
   font: inherit;
 }
 

@@ -68,7 +68,7 @@
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 13px;
-  background: rgb(255 255 255 / 62%);
+  background: var(--surface);
 }
 
 .profile-section-tabs button {
@@ -87,7 +87,7 @@
 .profile-section-tabs button[aria-current='page'] {
   border-color: rgb(42 91 67 / 15%);
   color: var(--green);
-  background: #fff;
+  background: var(--surface-strong);
   box-shadow: 0 4px 12px rgb(42 91 67 / 8%);
 }
 
@@ -239,7 +239,7 @@
   padding: 22px;
   border: 1px solid rgb(255 255 255 / 85%);
   border-radius: 16px;
-  background: rgb(255 255 255 / 78%);
+  background: var(--surface);
   box-shadow: 0 10px 26px rgb(35 58 43 / 6%);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
@@ -423,7 +423,7 @@
   border: 1px solid #a3342e;
   border-radius: 9px;
   color: #a3342e;
-  background: var(--white);
+  background: var(--surface-strong);
   cursor: pointer;
   font: inherit;
   font-size: 12px;

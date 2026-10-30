@@ -1,26 +1,51 @@
 :root {
-  --ink: #20251f;
-  --muted: #777b72;
-  --line: #e5e6df;
+  --ink: #1d2922;
+  --muted: #68756c;
+  --line: #e1e8e1;
   --white: #fff;
-  --page: #fbfbf8;
-  --green: #2a5b43;
+  --surface-strong: #fff;
+  --page: #f6f8f5;
+  --green: #28583f;
   --lime: #bfd454;
   --display: 'Cabin Variable', 'Trebuchet MS', sans-serif;
   --sans: 'Lato', 'Segoe UI', sans-serif;
   --mono: 'Cascadia Code', Consolas, monospace;
-  --surface: rgb(255 255 255 / 78%);
+  --surface: rgb(255 255 255 / 82%);
   --surface-strong: #fff;
-  --shadow-soft: 0 18px 50px rgb(35 58 43 / 8%);
+  --surface-alt: #edf2e9;
+  --surface-hover: #f1f5ef;
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-panel: 22px;
+  --shadow-soft: 0 16px 42px rgb(35 58 43 / 8%);
+  --shadow-raised: 0 18px 42px rgb(35 58 43 / 12%);
+  --focus-ring: 0 0 0 4px rgb(42 91 67 / 13%);
+  --motion-fast: 150ms ease;
 
-  font: 14px/1.45 var(--sans);
+  font: 14px/1.5 var(--sans);
   letter-spacing: 0;
-  color: var(--muted);
+  color: var(--ink);
   background: var(--page);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --ink: #e6eee8;
+  --muted: #a4b2a8;
+  --line: #35453b;
+  --surface-strong: #1d2821;
+  --page: #111813;
+  --green: #9dc47a;
+  --surface: rgb(29 40 33 / 90%);
+  --surface-alt: #26352b;
+  --surface-hover: #2a3a2e;
+  --shadow-soft: 0 16px 42px rgb(0 0 0 / 22%);
+  --shadow-raised: 0 18px 42px rgb(0 0 0 / 38%);
+  --focus-ring: 0 0 0 4px rgb(157 196 122 / 18%);
 }
 
 #root {
@@ -30,10 +55,37 @@
 body {
   margin: 0;
   min-width: 320px;
+  min-height: 100vh;
   background:
-    radial-gradient(circle at 8% 0%, rgb(218 237 202 / 62%), transparent 32rem),
-    radial-gradient(circle at 100% 20%, rgb(233 240 220 / 70%), transparent 28rem),
+    radial-gradient(circle at 8% 0%, rgb(218 237 202 / 48%), transparent 34rem),
+    radial-gradient(circle at 100% 18%, rgb(233 240 220 / 58%), transparent 30rem),
     var(--page);
+}
+
+html[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 8% 0%, rgb(42 67 48 / 28%), transparent 34rem),
+    radial-gradient(circle at 100% 18%, rgb(36 53 40 / 30%), transparent 30rem),
+    var(--page);
+}
+
+html[data-theme-transitioning],
+html[data-theme-transitioning] #root,
+html[data-theme-transitioning] #root * {
+  transition:
+    background-color 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease !important;
+}
+
+html[data-theme-transitioning] body,
+html[data-theme-transitioning] .topbar {
+  transition:
+    background 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease !important;
 }
 
 button,
@@ -41,6 +93,10 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+button:not(:disabled) {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,
@@ -52,6 +108,15 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: var(--ink);
+  background: rgb(191 212 84 / 42%);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -60,4 +125,15 @@ select:focus-visible {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   clip-path: inset(50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

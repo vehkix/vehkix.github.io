@@ -2,7 +2,6 @@
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  gap: 9px;
   padding: 0;
   border: 0;
   color: var(--ink);
@@ -12,40 +11,23 @@
   text-decoration: none;
 }
 
-.wordmark-name {
-  font-family: var(--display);
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -.04em;
+.topbar .wordmark img {
+  display: block;
+  width: 176px;
+  height: 48px;
+  object-fit: cover;
+  object-position: center;
 }
 
-.wordmark-guest { cursor: default; }
-
-.topbar {
-  position: sticky;
-  top: 14px;
-  z-index: 20;
-  min-height: 64px;
-  box-sizing: border-box;
-  padding: 10px 14px 10px 18px;
-  border: 1px solid rgb(255 255 255 / 72%);
-  border-radius: 20px;
-  background: rgb(255 255 255 / 66%);
-  box-shadow: 0 14px 40px rgb(34 55 42 / 9%), inset 0 1px 0 rgb(255 255 255 / 80%);
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-}
-
-.topbar::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(110deg, rgb(255 255 255 / 48%), rgb(233 243 223 / 24%));
-  content: '';
+.topbar .wordmark-icon img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 
 .topbar-actions {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -59,7 +41,18 @@
 .topbar-actions .text-action:hover,
 .topbar-home-button:hover {
   color: var(--ink);
-  background: rgb(237 244 232 / 78%);
+  background: var(--surface-hover);
+}
+
+.topbar-actions .text-action,
+.topbar-home-button {
+  color: var(--green);
+}
+
+.topbar-actions .data-status {
+  color: var(--muted);
+  border-color: var(--line);
+  background: var(--surface-strong);
 }
 
 .profile-menu-trigger {
@@ -70,29 +63,158 @@
 .profile-tab-avatar {
   width: 34px;
   height: 34px;
-  border-color: rgb(255 255 255 / 80%);
+  border-color: rgb(42 91 67 / 16%);
   box-shadow: 0 2px 8px rgb(42 91 67 / 16%);
 }
 
 .profile-menu-popover {
   border-radius: 14px;
-  background: rgb(255 255 255 / 92%);
+  background: var(--surface-strong);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-@media (max-width: 760px) {
-  .topbar {
-    top: 8px;
-    min-height: 58px;
-    padding: 7px 8px 7px 12px;
-    border-radius: 16px;
+.mobile-nav-menu {
+  position: relative;
+  display: none;
+}
+
+.mobile-nav-trigger {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--green);
+  background: transparent;
+  cursor: pointer;
+}
+
+.mobile-nav-trigger:hover,
+.mobile-nav-trigger[aria-expanded='true'] {
+  border-color: var(--line);
+  background: var(--surface-hover);
+}
+
+.mobile-nav-trigger > span:first-child,
+.mobile-nav-trigger > span:first-child::before,
+.mobile-nav-trigger > span:first-child::after {
+  display: block;
+  width: 17px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.mobile-nav-trigger > span:first-child {
+  position: relative;
+}
+
+.mobile-nav-trigger > span:first-child::before,
+.mobile-nav-trigger > span:first-child::after {
+  position: absolute;
+  left: 0;
+  content: '';
+}
+
+.mobile-nav-trigger > span:first-child::before {
+  top: -6px;
+}
+
+.mobile-nav-trigger > span:first-child::after {
+  top: 6px;
+}
+
+.mobile-nav-popover {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.mobile-nav-popover button {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.mobile-nav-popover button:hover,
+.mobile-nav-popover button:focus-visible {
+  color: var(--green);
+  background: var(--surface-hover);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--green);
+  background: var(--surface-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.theme-toggle:hover {
+  border-color: var(--green);
+  background: var(--surface-hover);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+@media (max-width: 920px) {
+  .theme-toggle {
+    display: none;
   }
 
-  .wordmark-name,
+  .mobile-nav-menu {
+    display: block;
+  }
+}
+
+@media (max-width: 760px) {
   .header-help,
   .admin-view-toggle {
     display: none;
+  }
+
+  .topbar .wordmark img {
+    width: clamp(112px, 35vw, 138px);
+    height: clamp(32px, 10vw, 38px);
   }
 
   .topbar-actions {
@@ -104,4 +226,13 @@
     min-height: 44px;
     padding-inline: 10px;
   }
+}
+
+html[data-theme='dark'] .topbar-actions .text-action:hover,
+html[data-theme='dark'] .topbar-home-button:hover,
+html[data-theme='dark'] .mobile-nav-trigger:hover,
+html[data-theme='dark'] .mobile-nav-trigger[aria-expanded='true'],
+html[data-theme='dark'] .mobile-nav-popover button:hover,
+html[data-theme='dark'] .mobile-nav-popover button:focus-visible {
+  background: var(--surface-hover);
 }

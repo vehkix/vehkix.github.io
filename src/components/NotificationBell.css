@@ -12,7 +12,7 @@
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--green);
-  background: var(--white);
+  background: var(--surface-strong);
   cursor: pointer;
 }
 
@@ -50,7 +50,7 @@
   max-height: min(70vh, 520px);
   overflow: auto;
   border: 1px solid var(--line);
-  background: var(--white);
+  background: var(--surface-strong);
   box-shadow: 0 12px 32px rgb(32 37 31 / 14%);
 }
 
@@ -62,7 +62,7 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .notification-popover h2 {
@@ -129,7 +129,11 @@
 
 .notification-popover li[data-unread='true'] {
   border-left: 3px solid var(--green);
-  background: #f7f9f4;
+  background: var(--surface-hover);
+}
+
+html[data-theme='dark'] .notification-clear:hover:not(:disabled) {
+  background: rgb(163 52 46 / 20%);
 }
 
 .notification-popover li p,
@@ -163,7 +167,7 @@
 
 .notification-actions button + button {
   color: var(--muted);
-  background: var(--white);
+  background: var(--surface-strong);
   border-color: var(--line);
 }
 

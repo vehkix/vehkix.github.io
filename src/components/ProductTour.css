@@ -1,11 +1,15 @@
 .product-tour {
+  box-sizing: border-box;
   overflow: hidden;
   border-radius: 24px;
   width: min(760px, calc(100% - 32px));
   max-width: 760px;
-  max-height: calc(100% - 32px);
+  height: min(680px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
   padding: 0;
   border: 1px solid var(--line);
+  display: grid;
+  grid-template-rows: 62px minmax(0, 1fr) 72px;
   color: var(--muted);
   background: var(--page);
   box-shadow: 0 24px 80px rgb(23 35 27 / 24%);
@@ -61,10 +65,12 @@
 .product-tour-content {
   position: relative;
   display: grid;
+  min-height: 0;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   align-items: center;
   gap: 34px;
   padding: 36px 34px 32px;
+  overflow-y: auto;
   background: radial-gradient(circle at 90% 5%, rgb(191 212 84 / 16%), transparent 14rem), var(--page);
 }
 
@@ -118,7 +124,7 @@
   place-items: center;
   border-radius: 50%;
   color: var(--green);
-  background: #e8f0df;
+  background: var(--surface-hover);
   font-style: normal;
 }
 
@@ -126,9 +132,11 @@
   position: relative;
   isolation: isolate;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 16px;
   border: 1px solid #dfe3da;
-  background: #fff;
+  background: var(--surface-strong);
   box-shadow: 0 8px 24px rgb(32 37 31 / 6%);
   animation: tour-preview-in 600ms 140ms cubic-bezier(.2,.8,.2,1) both;
 }
@@ -166,7 +174,7 @@
   border: 1px solid rgb(191 212 84 / 72%);
   border-radius: 9px;
   color: var(--green);
-  background: #fbfff5;
+  background: var(--surface-hover);
   box-shadow: 0 8px 18px rgb(42 91 67 / 16%);
   font-size: 9px;
   font-weight: 800;
@@ -188,7 +196,7 @@
   height: 9px;
   border-right: 1px solid #bfd454;
   border-bottom: 1px solid #bfd454;
-  background: #fbfff5;
+  background: var(--surface-hover);
   content: '';
   transform: rotate(45deg);
 }
@@ -250,7 +258,7 @@
   border: 1px solid rgb(255 255 255 / 80%);
   border-radius: 99px;
   color: var(--green);
-  background: rgb(255 255 255 / 82%);
+  background: var(--surface);
   box-shadow: 0 8px 16px rgb(42 91 67 / 12%);
   font-size: 7px;
   font-weight: 800;
@@ -338,7 +346,12 @@
   padding: 18px;
   border: 1px solid #e5e8e0;
   border-radius: 14px;
-  background: linear-gradient(135deg, #f8fbf4, #fff);
+  background: linear-gradient(135deg, var(--surface-alt), var(--surface-strong));
+}
+
+.tour-sharing-preview {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .tour-profile-avatar {
@@ -382,7 +395,7 @@
   place-items: center;
   border-radius: 50%;
   color: var(--green);
-  background: #e8f0df;
+  background: var(--surface-hover);
 }
 
 .tour-sharing-preview {
@@ -392,7 +405,7 @@
   padding: 11px;
   border: 1px solid #dfe8d6;
   border-radius: 10px;
-  background: #f7fbf3;
+  background: var(--surface-hover);
 }
 
 .tour-sharing-preview span {
@@ -580,13 +593,13 @@
 
 .product-tour-footer {
   display: flex;
-  min-height: 72px;
+  min-height: 0;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
   padding: 0 26px;
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-strong);
 }
 
 .product-tour-progress,
@@ -664,8 +677,9 @@
 @media (max-width: 620px) {
   .product-tour-content {
     grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 25px 22px;
+    align-content: start;
+    gap: 20px;
+    padding: 22px;
   }
 
   .product-tour-copy {
@@ -691,20 +705,51 @@
 
 @media (max-width: 420px) {
   .product-tour-footer {
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 20px;
+    gap: 6px;
+    padding: 0 12px;
   }
 
   .product-tour-actions {
-    width: 100%;
-    justify-content: flex-end;
+    gap: 8px;
   }
 
   .product-tour-skip {
-    margin-right: auto;
+    font-size: 10px !important;
+  }
+
+  .product-tour-progress {
+    gap: 3px;
+  }
+
+  .product-tour-progress > span:not(.product-tour-step-count) {
+    width: 5px;
+    height: 5px;
+  }
+
+  .product-tour-progress > .is-current {
+    width: 13px !important;
+  }
+
+  .product-tour-step-count {
+    margin-left: 4px;
+    font-size: 9px;
+  }
+}
+
+@media (max-height: 560px) {
+  .product-tour {
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    grid-template-rows: 52px minmax(0, 1fr) 60px;
+  }
+
+  .product-tour-content {
+    gap: 16px;
+    padding-block: 16px;
+  }
+
+  .tour-feature-list {
+    margin-top: 12px;
   }
 }
 

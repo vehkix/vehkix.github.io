@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
-import brandWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import lightWordmark from '../images/logo/vehkix-wordmark-color-transparent.png'
+import darkWordmark from '../images/logo/vehkix-wordmark-white.png'
 import { supabaseClient } from './lib/supabase'
 import { useAdminAccess } from './hooks/useAdminAccess'
 import { useAuthSession } from './hooks/useAuthSession'
@@ -7,6 +8,7 @@ import { useMyVehicles } from './hooks/useMyVehicles'
 import { useAdminUserManagement } from './hooks/useAdminUserManagement'
 import { useVehicleFieldSettings } from './hooks/useVehicleFieldSettings'
 import AppHeader from './components/AppHeader'
+import VehicleListSkeleton from './components/common/VehicleListSkeleton'
 import { formatDate, getDueItems, getVehicleName, toVehicleDraft } from './lib/vehicle'
 import { vehicleFieldDefinitions } from './lib/vehicleSettings'
 import type { AdminSection } from './types/admin'
@@ -25,7 +27,18 @@ const PublicVehicleSharePage = lazy(() => import('./components/PublicVehicleShar
 const VehicleForm = lazy(() => import('./components/VehicleForm'))
 const VehicleList = lazy(() => import('./components/VehicleList'))
 
+function getSavedDarkMode() {
+  try {
+    return window.localStorage.getItem('vehkix:theme') === 'dark'
+  } catch (error) {
+    console.error('Could not read the saved theme preference.', error)
+    return false
+  }
+}
+
 function App() {
+  const [darkMode, setDarkMode] = useState(getSavedDarkMode)
+  const themeTransitionTimer = useRef<number | null>(null)
   const [publicShareToken, setPublicShareToken] = useState(() =>
     new URLSearchParams(window.location.search).get('s')
       ?? new URLSearchParams(window.location.search).get('share'),
@@ -98,6 +111,20 @@ function App() {
   const adminView = !publicShareView && activeView === 'admin' && isAdmin && !isPasswordRecovery && !showProfile
   const collectionView = !publicShareView && !isPasswordRecovery && !showProfile && (activeView !== 'admin'
     || (Boolean(session) && !adminAccessLoading && !isAdmin))
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
+    try {
+      window.localStorage.setItem('vehkix:theme', darkMode ? 'dark' : 'light')
+    } catch (error) {
+      console.error('Could not save the theme preference.', error)
+    }
+  }, [darkMode])
+  useEffect(() => () => {
+    if (themeTransitionTimer.current !== null) {
+      window.clearTimeout(themeTransitionTimer.current)
+    }
+    delete document.documentElement.dataset.themeTransitioning
+  }, [])
   const {
     vehicles: vehicleRecords,
     loading: myVehiclesLoading,
@@ -304,29 +331,64 @@ function App() {
       .filter((field) => fieldSettings[field.key].show_in_details)
       .map((field) => field.key),
   )
-  const filteredVehicles = vehicleRecords.filter((vehicle) =>
-    (!adminView || !selectedAdminOwnerId || vehicle.user_id === selectedAdminOwnerId)
-    &&
-    [
+  const filteredVehicles = vehicleRecords.filter((vehicle) => {
+    if (adminView && selectedAdminOwnerId && vehicle.user_id !== selectedAdminOwnerId) return false
+
+    const searchableFields = [
       fieldSettings.id.show_in_details ? vehicle.id : null,
       fieldSettings.vehicle_number.show_in_details ? vehicle.vehicle_number : null,
       fieldSettings.vehicle_title.show_in_details ? getVehicleName(
         fieldSettings.company.show_in_details ? vehicle.company : null,
         fieldSettings.model.show_in_details ? vehicle.model : null,
       ) : null,
-      fieldSettings.model.show_in_details ? vehicle.model : null,
       fieldSettings.company.show_in_details ? vehicle.company : null,
-      !adminView && vehicle.user_id !== session?.user.id ? vehicle.owner_username : null,
-      adminView ? vehicle.owner_username : null,
+      fieldSettings.model.show_in_details ? vehicle.model : null,
+      fieldSettings.year.show_in_details ? vehicle.year : null,
+      fieldSettings.taken_date.show_in_details ? vehicle.taken_date : null,
+      fieldSettings.last_service_date.show_in_details
+        ? vehicle.service?.last_service_date ?? vehicle.last_service_date
+        : null,
+      fieldSettings.last_service_km.show_in_details
+        ? vehicle.service?.last_service_km ?? vehicle.last_service_km
+        : null,
+      fieldSettings.next_service_date.show_in_details
+        ? vehicle.service?.next_service_date ?? vehicle.next_service_date
+        : null,
+      fieldSettings.next_service_km.show_in_details
+        ? vehicle.service?.next_service_km ?? vehicle.next_service_km
+        : null,
+      fieldSettings.last_pucc_date.show_in_details
+        ? vehicle.pucc?.last_pucc_date ?? vehicle.last_pucc_date
+        : null,
+      fieldSettings.next_pucc_date.show_in_details
+        ? vehicle.pucc?.next_pucc_date ?? vehicle.next_pucc_date
+        : null,
+      fieldSettings.insurance_taken_date.show_in_details
+        ? vehicle.insurance?.taken_date ?? vehicle.insurance_taken_date
+        : null,
+      fieldSettings.insurance_next_renewal_date.show_in_details
+        ? vehicle.insurance?.next_renewal_date ?? vehicle.insurance_next_renewal_date
+        : null,
+      fieldSettings.rc_owner_name.show_in_details ? vehicle.rc_owner_name : null,
+      fieldSettings.chassis_no.show_in_details ? vehicle.chassis_no : null,
+      fieldSettings.engine_no.show_in_details ? vehicle.engine_no : null,
+      fieldSettings.tax_valid_upto.show_in_details ? vehicle.tax_valid_upto : null,
+      fieldSettings.registration_validity.show_in_details ? vehicle.registration_validity : null,
+      fieldSettings.notes.show_in_details ? vehicle.notes : null,
+      fieldSettings.owner_username.show_in_details ? vehicle.owner_username : null,
       adminView ? vehicle.owner_email : null,
+      fieldSettings.uploaded_by.show_in_details ? vehicle.uploaded_by : null,
+      fieldSettings.uploaded_date.show_in_details ? vehicle.uploaded_date : null,
     ]
-      .filter(Boolean)
+      .filter((value) => value !== null && value !== undefined && value !== '')
       .join(' ')
       .toLowerCase()
-      .includes(query.trim().toLowerCase()),
-  )
+
+    return searchableFields.includes(query.trim().toLowerCase())
+  })
   const ownVehicles = vehicleRecords.filter((vehicle) => vehicle.user_id === session?.user.id)
   const sharedVehicles = vehicleRecords.filter((vehicle) => vehicle.user_id !== session?.user.id)
+  const searchTerm = query.trim().toLowerCase()
   const filteredOwnVehicles = filteredVehicles.filter((vehicle) => vehicle.user_id === session?.user.id)
   const filteredSharedVehicles = filteredVehicles.filter((vehicle) => vehicle.user_id !== session?.user.id)
   const activeCollectionSection = collectionSectionPreference
@@ -336,11 +398,12 @@ function App() {
     : ownVehicles.length === 0 && sharedVehicles.length > 0
       ? 'shared'
       : 'own'
-  const displayedCollectionVehicles = activeCollectionSection === 'own'
-    ? filteredOwnVehicles
-    : filteredSharedVehicles
+  const displayedCollectionVehicles = searchTerm
+    ? filteredVehicles
+    : activeCollectionSection === 'own'
+      ? filteredOwnVehicles
+      : filteredSharedVehicles
   const matchingOwnerIds = new Set(filteredVehicles.map((vehicle) => vehicle.user_id).filter(Boolean))
-  const searchTerm = query.trim().toLowerCase()
   const filteredAccounts = accounts.filter((account) => (
     !searchTerm
     || account.username.toLowerCase().includes(searchTerm)
@@ -393,6 +456,21 @@ function App() {
     setShowProductTour(false)
   }
 
+  function toggleTheme() {
+    const root = document.documentElement
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      root.dataset.themeTransitioning = 'true'
+      if (themeTransitionTimer.current !== null) {
+        window.clearTimeout(themeTransitionTimer.current)
+      }
+      themeTransitionTimer.current = window.setTimeout(() => {
+        delete root.dataset.themeTransitioning
+        themeTransitionTimer.current = null
+      }, 280)
+    }
+    setDarkMode((enabled) => !enabled)
+  }
+
   return (
     <main className="page-shell">
       <AppHeader
@@ -403,6 +481,8 @@ function App() {
         isAdmin={isAdmin}
         adminView={adminView}
         collectionView={collectionView}
+        darkMode={darkMode}
+        bodyHasWordmark={!session && !showAbout && !showEmergencyContacts && !showEmailConfirmation}
         showProfile={showProfile}
         showEmailConfirmation={showEmailConfirmation}
         showVehicleForm={showVehicleForm}
@@ -421,7 +501,11 @@ function App() {
           setAdminSection('overview')
           setQuery('')
         }}
-        onHome={() => setShowProfile(false)}
+        onHome={() => {
+          setShowProfile(false)
+          navigateToView('collection')
+        }}
+        onToggleDarkMode={toggleTheme}
         onOpenProfile={() => {
           setShowAbout(false)
           setShowProfile(true)
@@ -464,7 +548,7 @@ function App() {
                           ? 'Admin panel'
                           : 'Field visibility'
                   : 'My vehicles'
-                : <img className="brand-wordmark" src={brandWordmark} alt="Vehkix" />}
+                : <img className="brand-wordmark" src={darkMode ? darkWordmark : lightWordmark} alt="Vehkix" />}
             </h1>
           </div>
           {!publicShareView && session && collectionView && (
@@ -699,7 +783,7 @@ function App() {
         )}
 
         {session && collectionView && myVehiclesLoading && (
-          <p className="empty-state" role="status">Loading your collection…</p>
+          <VehicleListSkeleton />
         )}
         {(authError || profileSyncError || (session && collectionView && myVehiclesError) || (session && adminAccessError) || actionError) && (
           <p className="empty-state error-state" role="alert">
@@ -708,9 +792,13 @@ function App() {
         )}
 
         {session && collectionView && !myVehiclesLoading && !myVehiclesError && (
-          <Suspense fallback={<p className="empty-state" role="status">Loading vehicles…</p>}>
+          <Suspense fallback={<VehicleListSkeleton />}>
             <div className="collection-sections">
-              <nav className="collection-section-switcher" aria-label="Vehicle collections">
+              <nav
+                className="collection-section-switcher"
+                aria-label="Vehicle collections"
+                hidden={Boolean(searchTerm)}
+              >
                 <button
                   className="collection-section-option"
                   type="button"
@@ -740,8 +828,15 @@ function App() {
               </nav>
               <section
                 className="collection-section-content"
-                aria-label={activeCollectionSection === 'own' ? 'My vehicles' : 'Shared with me'}
+                aria-label={searchTerm
+                  ? 'Search results across vehicles you can access'
+                  : activeCollectionSection === 'own' ? 'My vehicles' : 'Shared with me'}
               >
+                {searchTerm && (
+                  <p className="search-scope-note">
+                    Searching your vehicles and all vehicles shared with you.
+                  </p>
+                )}
                 <VehicleList
                   vehicles={displayedCollectionVehicles}
                   query={query}

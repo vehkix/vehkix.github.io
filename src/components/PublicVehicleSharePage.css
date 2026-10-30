@@ -46,7 +46,7 @@
   display: block;
   overflow: hidden;
   aspect-ratio: 4 / 3;
-  background: var(--white);
+  background: var(--surface-strong);
 }
 
 .public-share-photos .public-share-image {

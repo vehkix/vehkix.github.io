@@ -802,6 +802,9 @@ function ProfilePanel({
           <section className="profile-card profile-notification-card" aria-labelledby="profile-notifications-title">
             <h3 id="profile-notifications-title">Vehicle reminders</h3>
             <p>Choose when Vehkix reminds you about important vehicle dates. You can change these settings anytime.</p>
+            <p className="profile-sharing-message">
+              Send test checks notifications on this browser only. Scheduled reminders also require the Supabase reminder function and a scheduler.
+            </p>
             {!pushSupport() ? (
               <p className="profile-sharing-message error-state" role="alert">
                 Push notifications are not supported by this browser.
