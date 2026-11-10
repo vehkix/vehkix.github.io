@@ -63,6 +63,7 @@ function App() {
     section: 'own' | 'shared'
   } | null>(null)
   const [showVehicleForm, setShowVehicleForm] = useState(false)
+  const [openTileImageEditorOnFormOpen, setOpenTileImageEditorOnFormOpen] = useState(false)
   const [showProductTour, setShowProductTour] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
@@ -253,16 +254,19 @@ function App() {
     images: File[],
     retainedImagePaths: string[],
     primaryImageIndex: number | null,
+    tileImagePosition: { x: number; y: number },
   ) {
     const message = await saveVehicle(
       draft,
       images,
       retainedImagePaths,
       primaryImageIndex,
+      tileImagePosition,
       editingVehicle?.id,
     )
     if (!message) {
       setShowVehicleForm(false)
+      setOpenTileImageEditorOnFormOpen(false)
       setEditingVehicle(null)
     }
     return message
@@ -295,6 +299,7 @@ function App() {
     if (message) return message
     setShowProfile(false)
     setShowVehicleForm(false)
+    setOpenTileImageEditorOnFormOpen(false)
     setEditingVehicle(null)
     navigateToView('collection')
     return null
@@ -310,6 +315,7 @@ function App() {
     setActionError(null)
     setShowProfile(false)
     setShowVehicleForm(false)
+    setOpenTileImageEditorOnFormOpen(false)
     setEditingVehicle(null)
     navigateToView('collection')
     return null
@@ -715,11 +721,21 @@ function App() {
                       onToggleExpanded={(vehicleId) => setExpandedVehicleId(
                         expandedVehicleId === vehicleId ? null : vehicleId,
                       )}
-                      onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
+                      onEdit={(vehicle) => {
+                        setEditingVehicle(vehicle)
+                        setOpenTileImageEditorOnFormOpen(false)
+                        setShowVehicleForm(true)
+                      }}
+                      onEditImage={(vehicle) => {
+                        setEditingVehicle(vehicle)
+                        setOpenTileImageEditorOnFormOpen(true)
+                        setShowVehicleForm(true)
+                      }}
                       onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
                       onTransferComplete={() => {
                         setAdminRefreshToken((token) => token + 1)
                         setShowVehicleForm(false)
+                        setOpenTileImageEditorOnFormOpen(false)
                         setEditingVehicle(null)
                       }}
                     />
@@ -737,7 +753,11 @@ function App() {
               <button
                 className="primary-action"
                 type="button"
-                onClick={() => { setEditingVehicle(null); setShowVehicleForm(true) }}
+                onClick={() => {
+                  setEditingVehicle(null)
+                  setOpenTileImageEditorOnFormOpen(false)
+                  setShowVehicleForm(true)
+                }}
               >
                 Add vehicle
               </button>
@@ -754,8 +774,17 @@ function App() {
               fieldSettings={fieldSettings}
               existingImages={editingVehicle?.signed_images ?? []}
               initialPrimaryImagePath={editingVehicle?.primary_image}
+              initialTileImagePosition={{
+                x: editingVehicle?.tile_image_position_x ?? 50,
+                y: editingVehicle?.tile_image_position_y ?? 50,
+              }}
+              openTileImageEditorOnOpen={openTileImageEditorOnFormOpen}
               onSave={handleVehicleSave}
-              onCancel={() => { setShowVehicleForm(false); setEditingVehicle(null) }}
+              onCancel={() => {
+                setShowVehicleForm(false)
+                setOpenTileImageEditorOnFormOpen(false)
+                setEditingVehicle(null)
+              }}
             />
           </Suspense>
         )}
@@ -840,12 +869,22 @@ function App() {
                   onToggleExpanded={(vehicleId) => setExpandedVehicleId(
                     expandedVehicleId === vehicleId ? null : vehicleId,
                   )}
-                  onEdit={(vehicle) => { setEditingVehicle(vehicle); setShowVehicleForm(true) }}
+                  onEdit={(vehicle) => {
+                    setEditingVehicle(vehicle)
+                    setOpenTileImageEditorOnFormOpen(false)
+                    setShowVehicleForm(true)
+                  }}
+                  onEditImage={(vehicle) => {
+                    setEditingVehicle(vehicle)
+                    setOpenTileImageEditorOnFormOpen(true)
+                    setShowVehicleForm(true)
+                  }}
                   onDelete={(vehicle) => { void handleDeleteVehicle(vehicle) }}
                   onLeaveShared={handleLeaveSharedVehicle}
                   onTransferComplete={() => {
                     setAdminRefreshToken((token) => token + 1)
                     setShowVehicleForm(false)
+                    setOpenTileImageEditorOnFormOpen(false)
                     setEditingVehicle(null)
                   }}
                 />

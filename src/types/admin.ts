@@ -1,4 +1,4 @@
-export type AdminSection = 'overview' | 'users' | 'vehicles' | 'deletion-requests' | 'form' | 'details' | 'share'
+export type AdminSection = 'overview' | 'users' | 'vehicles' | 'deletion-requests' | 'form' | 'tile' | 'highlight' | 'details' | 'share'
 
 export interface AdminAccount {
 	id: string

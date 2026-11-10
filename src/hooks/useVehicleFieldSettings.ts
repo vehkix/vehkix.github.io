@@ -29,7 +29,7 @@ export function useVehicleFieldSettings(userId: string | undefined, isAdmin: boo
       const generation = ++loadGeneration
       const { data, error: queryError } = await client
         .from('vehicle_field_visibility')
-        .select('field_key, show_in_form, show_in_details, allow_share')
+        .select('field_key, show_in_form, show_in_tile, show_in_highlight, show_in_details, allow_share')
 
       if (!current || generation !== loadGeneration) return
       if (queryError) {
@@ -48,6 +48,8 @@ export function useVehicleFieldSettings(userId: string | undefined, isAdmin: boo
         nextSettings[key] = {
           field_key: key,
           show_in_form: row.show_in_form,
+          show_in_tile: row.show_in_tile,
+          show_in_highlight: row.show_in_highlight,
           show_in_details: row.show_in_details,
           allow_share: row.allow_share,
         }

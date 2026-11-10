@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { displayValue, formatDate, formatMileage, getDueMessage, getUpcomingDocuments, getVehicleName, getVehicleStatus } from '../lib/vehicle'
 import type { ExistingVehicleImage, Vehicle } from '../types/vehicle'
-import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
+import { vehicleFieldDefinitions, type VehicleFieldKey, type VehicleFieldSettings } from '../lib/vehicleSettings'
 import type { AdminAccount } from '../types/admin'
 import { createShareSections } from './vehicleShare'
 import ImageWithShimmer, { ImageShimmerPlaceholder } from './ImageWithShimmer'
@@ -9,6 +10,70 @@ import './VehicleList.css'
 
 const VehicleShareDialog = lazy(() => import('./VehicleShareDialog'))
 const VehicleTransferDialog = lazy(() => import('./VehicleTransferDialog'))
+
+interface VehicleDetailsDialogProps {
+  vehicleName: string
+  headerActions: ReactNode
+  bottomActions: ReactNode
+  children: ReactNode
+  onClose: () => void
+}
+
+function VehicleDetailsDialog({
+  vehicleName,
+  headerActions,
+  bottomActions,
+  children,
+  onClose,
+}: VehicleDetailsDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    dialog.showModal()
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="vehicle-details-dialog"
+      aria-labelledby="vehicle-details-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        onCloseRef.current()
+      }}
+      onClick={(event) => {
+        if (event.target === dialogRef.current) onCloseRef.current()
+      }}
+    >
+      <header className="vehicle-details-heading">
+        <div className="vehicle-details-heading-main">
+          <h2 id="vehicle-details-title">{vehicleName}</h2>
+          <p>Vehicle details</p>
+        </div>
+        <button className="vehicle-details-close" type="button" onClick={onClose} aria-label="Close vehicle details">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m5 5 10 10M15 5 5 15" />
+          </svg>
+        </button>
+        <div className="vehicle-details-header-actions">{headerActions}</div>
+      </header>
+      <div className="vehicle-details-body">
+        {children}
+        {bottomActions && <footer className="vehicle-details-bottom-actions">{bottomActions}</footer>}
+      </div>
+    </dialog>
+  )
+}
 
 interface VehicleDeleteConfirmProps {
   vehicleName: string
@@ -144,6 +209,7 @@ interface VehicleListProps {
   fieldSettings: VehicleFieldSettings
   onToggleExpanded: (vehicleId: string) => void
   onEdit: (vehicle: Vehicle) => void
+  onEditImage: (vehicle: Vehicle) => void
   onDelete: (vehicle: Vehicle) => void
   onLeaveShared?: (vehicle: Vehicle) => Promise<string | null>
   onTransferComplete: () => void
@@ -191,6 +257,7 @@ function VehicleList({
   fieldSettings,
   onToggleExpanded,
   onEdit,
+  onEditImage,
   onDelete,
   onLeaveShared,
   onTransferComplete,
@@ -201,13 +268,13 @@ function VehicleList({
   const [deleteVehicleTarget, setDeleteVehicleTarget] = useState<{ vehicle: Vehicle; name: string } | null>(null)
   const [leaveVehicleTarget, setLeaveVehicleTarget] = useState<{ vehicle: Vehicle; name: string } | null>(null)
   const [openMenu, setOpenMenu] = useState<{ vehicleId: string; location: 'tile' | 'details' } | null>(null)
-  const [menuPlacement, setMenuPlacement] = useState<'above' | 'below'>('below')
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const menuPopoverRef = useRef<HTMLDivElement>(null)
-  const visibleDetailFields = new Set(
+  const visibleCardFields = new Set(
     Object.values(fieldSettings)
-      .filter((setting) => setting.show_in_details)
+      .filter((setting) => setting.show_in_tile || setting.show_in_highlight)
       .map((setting) => setting.field_key),
   )
   const ownerGroups: VehicleOwnerGroup[] = showOwner
@@ -222,15 +289,30 @@ function VehicleList({
       const popover = menuPopoverRef.current
       if (!trigger || !popover) return
 
-      popover.style.maxHeight = ''
       const triggerRect = trigger.getBoundingClientRect()
-      const spaceAbove = triggerRect.top - 12
-      const spaceBelow = window.innerHeight - triggerRect.bottom - 12
-      const menuHeight = popover.getBoundingClientRect().height
-      const placement = spaceBelow < menuHeight ? 'above' : 'below'
-      const availableSpace = placement === 'above' ? spaceAbove : spaceBelow
-      setMenuPlacement(placement)
-      popover.style.maxHeight = `${Math.max(40, Math.min(360, availableSpace - 8))}px`
+      const viewportPadding = 12
+      const gap = 4
+      const topbar = document.querySelector<HTMLElement>('.topbar')
+      const topbarRect = topbar?.getBoundingClientRect()
+      const safeTop = topbarRect && topbarRect.bottom > 0 && topbarRect.top < window.innerHeight
+        ? Math.max(viewportPadding, topbarRect.bottom + 8)
+        : viewportPadding
+      const ownerList = trigger.closest('.vehicle-owner-list')
+      const ownerListTop = ownerList ? ownerList.getBoundingClientRect().top : safeTop
+      const spaceAbove = Math.max(0, triggerRect.top - Math.max(safeTop, ownerListTop) - gap)
+      const spaceBelow = Math.max(0, window.innerHeight - triggerRect.bottom - viewportPadding - gap)
+      const naturalHeight = popover.scrollHeight
+      const placeAbove = spaceBelow < naturalHeight && spaceAbove > spaceBelow
+      const availableSpace = placeAbove ? spaceAbove : spaceBelow
+      const maxHeight = Math.max(40, Math.min(360, availableSpace))
+      const menuHeight = Math.min(naturalHeight, maxHeight)
+      const top = placeAbove ? triggerRect.top - gap - menuHeight : triggerRect.bottom + gap
+      const menuWidth = popover.getBoundingClientRect().width
+      const left = Math.max(
+        viewportPadding,
+        Math.min(triggerRect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding),
+      )
+      setMenuPosition({ top, left, maxHeight })
     }
 
     updatePlacement()
@@ -246,7 +328,11 @@ function VehicleList({
     if (!openMenu) return
 
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (event.target instanceof Node && !listRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node
+        && !listRef.current?.contains(event.target)
+        && !menuPopoverRef.current?.contains(event.target)
+      ) {
         setOpenMenu(null)
       }
     }
@@ -322,15 +408,15 @@ function VehicleList({
   )
 
   function renderVehicle(vehicle: Vehicle) {
-        const vehicleName = getVehicleName(
+        const vehicleName = getVehicleName(vehicle.company, vehicle.model)
+        const detailsVehicleName = getVehicleName(
           fieldSettings.company.show_in_details ? vehicle.company : null,
           fieldSettings.model.show_in_details ? vehicle.model : null,
         )
-        const status = getVehicleStatus(vehicle, visibleDetailFields)
-        const dueMessage = getDueMessage(vehicle, visibleDetailFields)
+        const status = getVehicleStatus(vehicle, visibleCardFields)
+        const dueMessage = getDueMessage(vehicle, visibleCardFields)
         const visibleDocuments = getUpcomingDocuments(vehicle)
           .filter((document) => fieldSettings[document.id].show_in_details)
-        const [nextDocument] = visibleDocuments
         const images = vehicle.images ?? []
         const carouselImages = vehicle.signed_images?.filter(
           (image): image is ExistingVehicleImage & { url: string } => Boolean(image.url),
@@ -349,12 +435,48 @@ function VehicleList({
         )
         const isExpanded = expandedVehicleId === vehicle.id
         const detailsId = `details-${vehicle.id}`
+        const cardValues: Partial<Record<VehicleFieldKey, ReactNode>> = {
+          vehicle_title: vehicleName,
+          vehicle_number: displayValue(vehicle.vehicle_number),
+          company: displayValue(vehicle.company),
+          model: displayValue(vehicle.model),
+          year: displayValue(vehicle.year),
+          taken_date: formatDate(vehicle.taken_date),
+          last_service_date: formatDate(vehicle.service?.last_service_date),
+          last_service_km: formatMileage(vehicle.service?.last_service_km),
+          next_service_date: formatDate(vehicle.service?.next_service_date),
+          next_service_km: formatMileage(vehicle.service?.next_service_km),
+          next_pucc_date: formatDate(vehicle.pucc?.next_pucc_date),
+          insurance_next_renewal_date: formatDate(vehicle.insurance?.next_renewal_date),
+          tax_valid_upto: formatDate(vehicle.tax_valid_upto),
+          registration_validity: formatDate(vehicle.registration_validity),
+          last_pucc_date: formatDate(vehicle.pucc?.last_pucc_date),
+          insurance_taken_date: formatDate(vehicle.insurance?.taken_date),
+          rc_owner_name: displayValue(vehicle.rc_owner_name),
+          chassis_no: displayValue(vehicle.chassis_no),
+          engine_no: displayValue(vehicle.engine_no),
+          notes: displayValue(vehicle.notes),
+          owner_username: displayValue(vehicle.owner_username),
+          print_timestamp: '',
+          id: vehicle.id,
+          uploaded_by: displayValue(vehicle.uploaded_by),
+          uploaded_date: formatDate(vehicle.uploaded_date),
+        }
+        const tileFields = vehicleFieldDefinitions.filter((field) => (
+          field.key !== 'vehicle_title'
+          && field.key !== 'images'
+          && field.key !== 'print_timestamp'
+          && fieldSettings[field.key].show_in_tile
+        ))
+        const highlightedFields = vehicleFieldDefinitions.filter((field) => (
+          fieldSettings[field.key].show_in_highlight
+        ))
         const detailField = (key: VehicleFieldKey, label: string, value: ReactNode) => (
           fieldSettings[key].show_in_details && <div key={key}><dt>{label}</dt><dd>{value}</dd></div>
         )
-        const renderVehicleMenu = (location: 'tile' | 'details') => {
-          const menuOpen = openMenu?.vehicleId === vehicle.id && openMenu.location === location
-          const menuId = `vehicle-menu-${vehicle.id}-${location}`
+        const renderVehicleMenu = () => {
+          const menuOpen = openMenu?.vehicleId === vehicle.id && openMenu.location === 'tile'
+          const menuId = `vehicle-menu-${vehicle.id}-tile`
           const dismissMenu = () => setOpenMenu(null)
 
           return (
@@ -367,18 +489,25 @@ function VehicleList({
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-controls={menuId}
-                onClick={() => setOpenMenu(menuOpen ? null : { vehicleId: vehicle.id, location })}
+                onClick={() => {
+                  setMenuPosition(null)
+                  setOpenMenu(menuOpen ? null : { vehicleId: vehicle.id, location: 'tile' })
+                }}
               >
                 <span aria-hidden="true">⋮</span>
               </button>
-              {menuOpen && (
+              {menuOpen && createPortal(
                 <div
                   ref={menuPopoverRef}
                   className="vehicle-menu-popover"
-                  data-placement={menuPlacement}
                   id={menuId}
                   role="menu"
                   aria-label={`${vehicleName} actions`}
+                  style={{
+                    top: menuPosition?.top ?? 0,
+                    left: menuPosition?.left ?? 0,
+                    maxHeight: menuPosition ? `${menuPosition.maxHeight}px` : undefined,
+                  }}
                 >
                   {vehicle.can_edit && (
                     <button type="button" role="menuitem" onClick={() => {
@@ -437,133 +566,220 @@ function VehicleList({
                       Leave shared vehicle
                     </button>
                   )}
-                  {(location === 'details' || isExpanded) && (
-                    <button type="button" role="menuitem" onClick={() => {
-                      dismissMenu()
-                      onToggleExpanded(vehicle.id)
-                    }}>
-                      Close Details
-                    </button>
-                  )}
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           )
         }
 
         return (
-          <article className="vehicle-row" key={vehicle.id} role="listitem">
-            <div className="vehicle-cover">
-              {fieldSettings.images.show_in_details && carouselImages.length > 0 ? (
-                <>
-                  <ImageWithShimmer
-                    key={carouselImages[activeImageIndex].url}
-                    className="vehicle-cover-image"
-                    src={carouselImages[activeImageIndex].url}
-                    alt={`${vehicleName} vehicle`}
-                  />
-                  {carouselImages.length > 1 && (
-                    <>
-                      <button
-                        className="carousel-control previous"
-                        type="button"
-                        aria-label={`Previous ${vehicleName} image`}
-                        onClick={() => setImageIndices((current) => ({
-                          ...current,
-                          [carouselKey]: (activeImageIndex - 1 + carouselImages.length) % carouselImages.length,
-                        }))}
-                      >
-                        <span aria-hidden="true" />
-                      </button>
-                      <button
-                        className="carousel-control next"
-                        type="button"
-                        aria-label={`Next ${vehicleName} image`}
-                        onClick={() => setImageIndices((current) => ({
-                          ...current,
-                          [carouselKey]: (activeImageIndex + 1) % carouselImages.length,
-                        }))}
-                      >
-                        <span aria-hidden="true" />
-                      </button>
-                      <span className="carousel-count" aria-live="polite">
-                        {activeImageIndex + 1} / {carouselImages.length}
-                      </span>
-                    </>
-                  )}
-                </>
-              ) : vehicle.images_loading ? (
-                <ImageShimmerPlaceholder className="vehicle-cover-image" label="Loading vehicle photo" />
-              ) : (
-                <span className="vehicle-cover-empty">
-                  {fieldSettings.images.show_in_details
-                    ? vehicle.image_paths?.length ? 'Photos unavailable' : 'No image'
-                    : 'Photo hidden'}
-                </span>
-              )}
-            </div>
-            <div className="vehicle-main">
-              {fieldSettings.vehicle_number.show_in_details && (
-                <span className="vehicle-id">{displayValue(vehicle.vehicle_number)}</span>
-              )}
-              {fieldSettings.vehicle_title.show_in_details && <h2>{vehicleName}</h2>}
-              <p>
-                {[
-                  fieldSettings.company.show_in_details ? vehicle.company : null,
-                  fieldSettings.model.show_in_details ? vehicle.model : null,
-                ].filter(Boolean).join(' ') || 'Vehicle details not set'}
-                {fieldSettings.year.show_in_details && vehicle.year ? <> <span>·</span> {vehicle.year}</> : null}
-              </p>
-                {!showOwner && vehicle.user_id !== userId && (
-                  <span className="vehicle-owner">Shared by · {vehicle.owner_username || 'another user'}</span>
+          <article
+            className={`vehicle-row${openMenu?.vehicleId === vehicle.id ? ' menu-open' : ''}`}
+            key={vehicle.id}
+            role="listitem"
+          >
+            <header className="vehicle-card-header">
+              <div className="vehicle-cover">
+                {fieldSettings.images.show_in_tile && carouselImages.length > 0 ? (
+                  <>
+                    <ImageWithShimmer
+                      key={carouselImages[activeImageIndex].url}
+                      className="vehicle-cover-image"
+                      src={carouselImages[activeImageIndex].url}
+                      alt={`${vehicleName} vehicle`}
+                      objectPosition={`${vehicle.tile_image_position_x ?? 50}% ${vehicle.tile_image_position_y ?? 50}%`}
+                    />
+                    {carouselImages.length > 1 && (
+                      <>
+                        <button
+                          className="carousel-control previous"
+                          type="button"
+                          aria-label={`Previous ${vehicleName} image`}
+                          onClick={() => setImageIndices((current) => ({
+                            ...current,
+                            [carouselKey]: (activeImageIndex - 1 + carouselImages.length) % carouselImages.length,
+                          }))}
+                        >
+                          <span aria-hidden="true" />
+                        </button>
+                        <button
+                          className="carousel-control next"
+                          type="button"
+                          aria-label={`Next ${vehicleName} image`}
+                          onClick={() => setImageIndices((current) => ({
+                            ...current,
+                            [carouselKey]: (activeImageIndex + 1) % carouselImages.length,
+                          }))}
+                        >
+                          <span aria-hidden="true" />
+                        </button>
+                        <span className="carousel-count" aria-live="polite">
+                          {activeImageIndex + 1} / {carouselImages.length}
+                        </span>
+                      </>
+                    )}
+                  </>
+                ) : fieldSettings.images.show_in_tile && vehicle.images_loading ? (
+                  <ImageShimmerPlaceholder className="vehicle-cover-image" label="Loading vehicle photo" />
+                ) : (
+                  <span className="vehicle-cover-empty">
+                    {fieldSettings.images.show_in_tile
+                      ? vehicle.image_paths?.length ? 'Photos unavailable' : 'Add a vehicle photo'
+                      : 'Photo hidden'}
+                  </span>
                 )}
-                {showOwner && fieldSettings.owner_username.show_in_details && (
+              </div>
+              <div className="vehicle-card-heading">
+                {fieldSettings.vehicle_title.show_in_tile && <h2>{vehicleName}</h2>}
+                {fieldSettings.vehicle_number.show_in_tile && (
+                  <span className="vehicle-id">{displayValue(vehicle.vehicle_number)}</span>
+                )}
+              </div>
+            </header>
+            <div className="vehicle-card-content">
+              <div className="vehicle-main">
+                {!fieldSettings.vehicle_title.show_in_tile && (
+                  <h2>{vehicleName}</h2>
+                )}
+                {!showOwner && vehicle.user_id !== userId && (
+                  <span className="vehicle-owner">Shared by {vehicle.owner_username || 'another user'}</span>
+                )}
+                {showOwner && fieldSettings.owner_username.show_in_tile && (
                   <span className="vehicle-owner">Owner · {vehicle.owner_username || vehicle.user_id}</span>
                 )}
+              </div>
+              {tileFields.length > 0 && (
+                <dl className="vehicle-tile-fields">
+                  {tileFields.map((field) => (
+                    <div key={field.key}>
+                      <dt>{field.label}</dt>
+                      <dd>{cardValues[field.key] ?? 'Not set'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {highlightedFields.length > 0 && (
+                <dl className="vehicle-highlight-strip" aria-label="Highlighted vehicle information">
+                  {highlightedFields.map((field) => (
+                    <div key={field.key}>
+                      <dt>{field.label}</dt>
+                      <dd>{cardValues[field.key] ?? 'Not set'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              <div className="vehicle-card-footer">
+                <div className="status-cell">
+                  <span className={`status ${status.className}`}>
+                    <span className="status-dot" />{status.label}
+                  </span>
+                  {dueMessage && <span className={`due-countdown ${status.className}`}>{dueMessage}</span>}
+                </div>
+                <div className="vehicle-card-actions">
+                  <button
+                    className="details-toggle"
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-controls={isExpanded ? detailsId : undefined}
+                    onClick={() => onToggleExpanded(vehicle.id)}
+                  >
+                    <span className="expand-icon" aria-hidden="true" />
+                    {isExpanded ? 'Hide details' : 'View details'}
+                  </button>
+                  {renderVehicleMenu()}
+                </div>
+              </div>
             </div>
-            {(fieldSettings.next_service_date.show_in_details || fieldSettings.next_service_km.show_in_details) && <div className="vehicle-detail">
-              <span className="detail-label">NEXT SERVICE</span>
-              {fieldSettings.next_service_date.show_in_details && <strong>{formatDate(vehicle.service?.next_service_date)}</strong>}
-              <span>
-                {fieldSettings.next_service_km.show_in_details
-                  ? formatMileage(vehicle.service?.next_service_km)
-                  : ''}
-              </span>
-            </div>}
-            {visibleDocuments.length > 0 && <div className="vehicle-detail document-detail">
-              <span className="detail-label">NEXT DOCUMENT</span>
-              <strong>{formatDate(nextDocument?.date)}</strong>
-              <span>{nextDocument.summaryLabel}</span>
-            </div>}
-            <div className="status-cell">
-              <span className={`status ${status.className}`}>
-                <span className="status-dot" />{status.label}
-              </span>
-              {dueMessage && <span className={`due-countdown ${status.className}`}>{dueMessage}</span>}
-            </div>
-            <div className="row-actions">
-              <button
-                className="details-toggle"
-                type="button"
-                aria-expanded={isExpanded}
-                aria-controls={detailsId}
-                onClick={() => onToggleExpanded(vehicle.id)}
+            {isExpanded && (
+              <VehicleDetailsDialog
+                vehicleName={vehicleName}
+                onClose={() => onToggleExpanded(vehicle.id)}
+                headerActions={(
+                  <>
+                    {vehicle.can_edit && (
+                      <button
+                        className="vehicle-details-action"
+                        type="button"
+                        onClick={() => {
+                          onToggleExpanded(vehicle.id)
+                          onEdit(vehicle)
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {vehicle.can_share && (
+                      <button
+                        className="vehicle-details-action"
+                        type="button"
+                        onClick={() => {
+                          onToggleExpanded(vehicle.id)
+                          setVehicleDialog({ vehicleId: vehicle.id, mode: 'share' })
+                        }}
+                      >
+                        Share
+                      </button>
+                    )}
+                    <button
+                      className="vehicle-details-action"
+                      type="button"
+                      onClick={() => {
+                        onToggleExpanded(vehicle.id)
+                        setVehicleDialog({ vehicleId: vehicle.id, mode: 'print' })
+                      }}
+                    >
+                      PDF
+                    </button>
+                  </>
+                )}
+                bottomActions={(
+                  <>
+                    {(vehicle.user_id === userId || canTransferAll) && (
+                      <button
+                        className="vehicle-details-action"
+                        type="button"
+                        onClick={() => {
+                          onToggleExpanded(vehicle.id)
+                          setTransferVehicleId(vehicle.id)
+                        }}
+                      >
+                        Transfer vehicle
+                      </button>
+                    )}
+                    {onLeaveShared && !showOwner && vehicle.user_id !== userId && (
+                      <button
+                        className="vehicle-details-action leave-shared-action"
+                        type="button"
+                        onClick={() => {
+                          onToggleExpanded(vehicle.id)
+                          setLeaveVehicleTarget({ vehicle, name: vehicleName })
+                        }}
+                      >
+                        Leave shared vehicle
+                      </button>
+                    )}
+                    {vehicle.can_delete && (
+                      <button
+                        className="vehicle-details-action delete-action"
+                        type="button"
+                        disabled={deleteBusy}
+                        onClick={() => {
+                          onToggleExpanded(vehicle.id)
+                          setDeleteVehicleTarget({ vehicle, name: vehicleName })
+                        }}
+                      >
+                        Delete vehicle
+                      </button>
+                    )}
+                  </>
+                )}
               >
-                <span className="expand-icon" aria-hidden="true" />
-                {isExpanded ? 'Hide details' : 'View details'}
-              </button>
-              {renderVehicleMenu('tile')}
-            </div>
-            <section
-              className="expanded-details"
-              id={detailsId}
-              aria-label={`${vehicleName} details`}
-              hidden={!isExpanded}
-            >
+              <section className="expanded-details" id={detailsId} aria-label={`${vehicleName} details`}>
               <div className="detail-group vehicle-info-group">
                 <h3>Vehicle</h3>
                 <dl>
-                  {detailField('vehicle_title', 'Vehicle title', vehicleName)}
+                  {detailField('vehicle_title', 'Vehicle title', detailsVehicleName)}
                   {detailField('vehicle_number', 'Vehicle number', displayValue(vehicle.vehicle_number))}
                   {detailField('company', 'Make', displayValue(vehicle.company))}
                   {detailField('model', 'Model', displayValue(vehicle.model))}
@@ -608,20 +824,36 @@ function VehicleList({
                 </dl>
               </div>}
               {fieldSettings.images.show_in_details && <div className="detail-group photo-info-group">
-                <h3>Photos <span>({vehicle.image_paths?.length ?? images.length})</span></h3>
+                <header className="detail-photo-heading">
+                  <h3>Photos <span>({vehicle.image_paths?.length ?? images.length})</span></h3>
+                  {vehicle.can_edit && carouselImages.length > 0 && (
+                    <button
+                      className="detail-edit-image"
+                      type="button"
+                      onClick={() => {
+                        onToggleExpanded(vehicle.id)
+                        onEditImage(vehicle)
+                      }}
+                    >
+                      Edit image
+                    </button>
+                  )}
+                </header>
                 {images.length > 0 ? (
                   <ul className="detail-image-grid">
-                    {images.map((image, index) => (
-                      <li key={image}>
-                        <a href={image} target="_blank" rel="noreferrer">
+                    {carouselImages.map((image, index) => (
+                      <li key={image.path}>
+                        <a href={image.url} target="_blank" rel="noreferrer">
                           <ImageWithShimmer
-                            key={image}
                             className="detail-image"
-                            src={image}
+                            src={image.url}
                             alt={`${vehicleName}, photo ${index + 1}`}
                             loading="lazy"
+                            objectPosition={image.path === vehicle.primary_image
+                              ? `${vehicle.tile_image_position_x ?? 50}% ${vehicle.tile_image_position_y ?? 50}%`
+                              : undefined}
                           />
-                          <span>Photo {index + 1}</span>
+                          <span>{image.path === vehicle.primary_image ? 'Primary' : `Photo ${index + 1}`}</span>
                         </a>
                       </li>
                     ))}
@@ -639,10 +871,9 @@ function VehicleList({
                   {detailField('uploaded_date', 'Uploaded on', formatDate(vehicle.uploaded_date))}
                 </dl>
               </div>}
-              <div className="vehicle-detail-actions">
-                {renderVehicleMenu('details')}
-              </div>
-            </section>
+              </section>
+              </VehicleDetailsDialog>
+            )}
               {vehicleDialog?.vehicleId === vehicle.id && (
                 <Suspense fallback={<p className="empty-state" role="status">Loading sharing tools…</p>}>
                   <VehicleShareDialog

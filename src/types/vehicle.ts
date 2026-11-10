@@ -48,6 +48,8 @@ export interface Vehicle {
   images_loading?: boolean
   signed_images?: ExistingVehicleImage[]
   primary_image?: string | null
+  tile_image_position_x?: number | null
+  tile_image_position_y?: number | null
 }
 
 export interface VehicleDraft {

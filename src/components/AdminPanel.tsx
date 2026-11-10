@@ -56,10 +56,13 @@ function AdminPanel({
   const groups = [...new Set(vehicleFieldDefinitions.map((field) => field.group))]
   const surfaceOptions: { key: VehicleFieldSurface; label: string; description: string }[] = [
     { key: 'form', label: 'Add & Edit', description: 'Choose which fields users can enter when adding or editing a vehicle.' },
-    { key: 'details', label: 'Details', description: 'Choose which fields appear in vehicle cards and record details.' },
+    { key: 'tile', label: 'Vehicle tiles', description: 'Choose what appears on each vehicle card, beneath its photo.' },
+    { key: 'highlight', label: 'Highlighted', description: 'Choose the key reminders shown in the highlighted strip on each card.' },
+    { key: 'details', label: 'Details', description: 'Choose which fields appear when someone opens a vehicle’s full details.' },
     { key: 'share', label: 'Share', description: 'Choose which fields users can include when sharing or printing a vehicle record.' },
   ]
-  const activeSurface = activeSection === 'form' || activeSection === 'details' || activeSection === 'share'
+  const activeSurface = activeSection === 'form' || activeSection === 'tile'
+    || activeSection === 'highlight' || activeSection === 'details' || activeSection === 'share'
     ? activeSection
     : null
   const activeSurfaceOption = surfaceOptions.find((surface) => surface.key === activeSurface)
@@ -287,9 +290,18 @@ function AdminPanel({
                         <span role="columnheader">Shown</span>
                       </div>
                       {vehicleFieldDefinitions.filter((field) => field.group === group).map((field) => {
-                        const available = activeSurface !== 'form' || field.form
+                        const available = activeSurface === 'form'
+                          ? field.form
+                          : activeSurface === 'tile' || activeSurface === 'highlight'
+                            ? field.key !== 'print_timestamp'
+                              && (activeSurface !== 'highlight' || field.key !== 'images')
+                            : true
                         const checked = activeSurface === 'form'
                           ? fieldSettings[field.key].show_in_form
+                          : activeSurface === 'tile'
+                            ? fieldSettings[field.key].show_in_tile
+                            : activeSurface === 'highlight'
+                              ? fieldSettings[field.key].show_in_highlight
                           : activeSurface === 'details'
                             ? fieldSettings[field.key].show_in_details
                             : fieldSettings[field.key].allow_share

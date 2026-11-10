@@ -7,6 +7,7 @@ interface ImageWithShimmerProps {
   className?: string
   loading?: 'eager' | 'lazy'
   onError?: () => void
+  objectPosition?: string
 }
 
 interface ImageShimmerPlaceholderProps {
@@ -33,6 +34,7 @@ function ImageWithShimmer({
   className = '',
   loading = 'eager',
   onError,
+  objectPosition,
 }: ImageWithShimmerProps) {
   const [imageState, setImageState] = useState<'loading' | 'loaded' | 'error'>('loading')
 
@@ -46,6 +48,7 @@ function ImageWithShimmer({
         src={src}
         alt={alt}
         loading={loading}
+        style={objectPosition ? { objectPosition } : undefined}
         onLoad={() => setImageState('loaded')}
         onError={() => {
           setImageState('error')

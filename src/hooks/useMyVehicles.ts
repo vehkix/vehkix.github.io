@@ -61,6 +61,13 @@ async function signVehicleImages(paths: string[]): Promise<VehicleImage[]> {
   }))
 }
 
+function normalizeUploadFileName(image: File): File {
+  const name = image.name.replace(/\s+/g, '_')
+  return name === image.name
+    ? image
+    : new File([image], name, { type: image.type, lastModified: image.lastModified })
+}
+
 function toDatabasePayload(draft: VehicleDraft, username: string | null) {
   const nullableText = (value: string) => value.trim() || null
   const nullableNumber = (value: string) => value.trim() ? Number(value) : null
@@ -267,6 +274,7 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
     images: File[],
     retainedImagePaths: string[],
     primaryImageIndex: number | null,
+    tileImagePosition: { x: number; y: number },
     editingVehicleId?: string,
   ): Promise<string | null> {
     if (!supabaseClient || !session) return 'Sign in before saving a vehicle.'
@@ -295,13 +303,16 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
     try {
       for (const image of images) {
         uploadingImage = image
-        const extension = image.name.includes('.')
-          ? image.name.slice(image.name.lastIndexOf('.') + 1).replace(/[^a-zA-Z0-9]/g, '')
-          : 'image'
+        const extension = {
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/webp': 'webp',
+          'image/gif': 'gif',
+        }[image.type] ?? 'image'
         const path = `${targetUserId}/${vehicleId}/${crypto.randomUUID()}.${extension}`
         const { error } = await client.storage
           .from('user-vehicle-images')
-          .upload(path, image, { contentType: image.type, upsert: false })
+          .upload(path, normalizeUploadFileName(image), { contentType: image.type, upsert: false })
 
         if (error) {
           console.error('Vehicle image upload failed:', error)
@@ -328,6 +339,8 @@ export function useMyVehicles(session: Session | null, adminView = false, refres
         ),
         images: imagePaths,
         primary_image: primaryImagePath,
+        tile_image_position_x: tileImagePosition.x,
+        tile_image_position_y: tileImagePosition.y,
       }
       const result = editingVehicle
         ? await client

@@ -28,14 +28,23 @@ export const vehicleFieldDefinitions = [
 ] as const
 
 export type VehicleFieldKey = typeof vehicleFieldDefinitions[number]['key']
-export type VehicleFieldSurface = 'form' | 'details' | 'share'
+export type VehicleFieldSurface = 'form' | 'tile' | 'highlight' | 'details' | 'share'
 
 export interface VehicleFieldVisibility {
   field_key: VehicleFieldKey
   show_in_form: boolean
+  show_in_tile: boolean
+  show_in_highlight: boolean
   show_in_details: boolean
   allow_share: boolean
 }
+
+const tileFieldKeys = new Set<VehicleFieldKey>([
+  'vehicle_title', 'vehicle_number', 'year', 'images',
+])
+const highlightFieldKeys = new Set<VehicleFieldKey>([
+  'next_service_date', 'next_service_km', 'next_pucc_date', 'insurance_next_renewal_date',
+])
 
 export type VehicleFieldSettings = Record<VehicleFieldKey, VehicleFieldVisibility>
 
@@ -43,6 +52,8 @@ export const defaultVehicleFieldSettings = Object.fromEntries(
   vehicleFieldDefinitions.map((field) => [field.key, {
     field_key: field.key,
     show_in_form: field.form,
+    show_in_tile: tileFieldKeys.has(field.key),
+    show_in_highlight: highlightFieldKeys.has(field.key),
     show_in_details: field.details,
     allow_share: field.share,
   }]),
@@ -50,6 +61,8 @@ export const defaultVehicleFieldSettings = Object.fromEntries(
 
 export function settingColumn(surface: VehicleFieldSurface) {
   if (surface === 'form') return 'show_in_form'
+  if (surface === 'tile') return 'show_in_tile'
+  if (surface === 'highlight') return 'show_in_highlight'
   if (surface === 'details') return 'show_in_details'
   return 'allow_share'
 }

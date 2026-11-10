@@ -1,4 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import type { ExistingVehicleImage, VehicleDraft } from '../types/vehicle'
 import type { VehicleFieldKey, VehicleFieldSettings } from '../lib/vehicleSettings'
 import ImageWithShimmer, { ImageShimmerPlaceholder } from './ImageWithShimmer'
@@ -11,11 +20,14 @@ interface VehicleFormProps {
   fieldSettings: VehicleFieldSettings
   existingImages?: ExistingVehicleImage[]
   initialPrimaryImagePath?: string | null
+  initialTileImagePosition?: { x: number; y: number }
+  openTileImageEditorOnOpen?: boolean
   onSave: (
     draft: VehicleDraft,
     images: File[],
     retainedImagePaths: string[],
     primaryImageIndex: number | null,
+    tileImagePosition: { x: number; y: number },
   ) => Promise<string | null>
   onCancel: () => void
 }
@@ -24,6 +36,16 @@ interface SelectedImage {
   id: string
   file: File
   previewUrl: string
+}
+
+interface ImageDragStart {
+  pointerId: number
+  clientX: number
+  clientY: number
+  positionX: number
+  positionY: number
+  overflowX: number
+  overflowY: number
 }
 
 type RegistrationSeparator = '-' | ' ' | '/' | ''
@@ -37,7 +59,6 @@ const registrationSeparators: { value: RegistrationSeparator; label: string }[] 
   { value: '/', label: 'Slash (/)' },
   { value: '', label: 'No separator' },
 ]
-
 function formatRegistrationNumber(value: string, separator: RegistrationSeparator) {
   return (value.toUpperCase().match(/[A-Z]+|\d+/g) ?? []).join(separator)
 }
@@ -91,10 +112,15 @@ function VehicleForm({
   fieldSettings,
   existingImages = [],
   initialPrimaryImagePath,
+  initialTileImagePosition = { x: 50, y: 50 },
+  openTileImageEditorOnOpen = false,
   onSave,
   onCancel,
 }: VehicleFormProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const tileImageEditorDialogRef = useRef<HTMLDialogElement>(null)
+  const tileImageEditorRef = useRef<HTMLDivElement>(null)
+  const imageDragStart = useRef<ImageDragStart | null>(null)
   const previewUrls = useRef(new Set<string>())
   const [savedDraft] = useState(() => loadSavedDraft(draftStorageKey))
   const [draft, setDraft] = useState<VehicleDraft>(() => initialDraft ?? savedDraft.draft)
@@ -103,6 +129,9 @@ function VehicleForm({
   const [primaryImageKey, setPrimaryImageKey] = useState(
     initialPrimaryImagePath ?? existingImages[0]?.path ?? '',
   )
+  const [tileImagePosition, setTileImagePosition] = useState(initialTileImagePosition)
+  const [editorImagePosition, setEditorImagePosition] = useState(initialTileImagePosition)
+  const [showTileImageEditor, setShowTileImageEditor] = useState(false)
   const [images, setImages] = useState<SelectedImage[]>([])
   const [retainedImages, setRetainedImages] = useState<ExistingVehicleImage[]>(existingImages)
   const [saving, setSaving] = useState(false)
@@ -126,6 +155,17 @@ function VehicleForm({
     previewUrls.current.forEach((url) => URL.revokeObjectURL(url))
     previewUrls.current.clear()
   }, [])
+
+  useEffect(() => {
+    if (!showTileImageEditor) return
+    const dialog = tileImageEditorDialogRef.current
+    if (!dialog) return
+    dialog.showModal()
+    return () => {
+      imageDragStart.current = null
+      if (dialog.open) dialog.close()
+    }
+  }, [showTileImageEditor])
 
   function updateField(
     field: keyof VehicleDraft,
@@ -165,6 +205,7 @@ function VehicleForm({
     setImages([])
     setRetainedImages([])
     setPrimaryImageKey('')
+    setTileImagePosition({ x: 50, y: 50 })
     setError(null)
 
     try {
@@ -190,6 +231,7 @@ function VehicleForm({
         images.map((image) => image.file),
         retainedImages.map((image) => image.path),
         primaryIndex < 0 ? null : primaryIndex,
+        tileImagePosition,
       )
       if (message) setError(message)
       else if (draftStorageKey) {
@@ -248,6 +290,8 @@ function VehicleForm({
       || retainedPaths.length !== originalPaths.length
       || retainedPaths.some((path, index) => path !== originalPaths[index])
       || primaryImageKey !== (initialPrimaryImagePath ?? existingImages[0]?.path ?? '')
+      || tileImagePosition.x !== initialTileImagePosition.x
+      || tileImagePosition.y !== initialTileImagePosition.y
   }
 
   function requestClose() {
@@ -280,6 +324,67 @@ function VehicleForm({
     if (primaryImageKey === id) setPrimaryImageKey(retainedImages[0]?.path ?? remaining[0]?.id ?? '')
   }
 
+  function openTileImageEditor(key: string) {
+    setPrimaryImageKey(key)
+    setEditorImagePosition(tileImagePosition)
+    imageDragStart.current = null
+    setShowTileImageEditor(true)
+  }
+
+  function startImageDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const stage = tileImageEditorRef.current
+    const image = stage?.querySelector('img')
+    if (!stage || !image || !image.naturalWidth || !image.naturalHeight) return
+
+    const bounds = stage.getBoundingClientRect()
+    const scale = Math.max(bounds.width / image.naturalWidth, bounds.height / image.naturalHeight)
+    imageDragStart.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      positionX: editorImagePosition.x,
+      positionY: editorImagePosition.y,
+      overflowX: Math.max(0, image.naturalWidth * scale - bounds.width),
+      overflowY: Math.max(0, image.naturalHeight * scale - bounds.height),
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+
+  function moveImage(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = imageDragStart.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    setEditorImagePosition({
+      x: drag.overflowX === 0
+        ? drag.positionX
+        : Math.max(0, Math.min(100, drag.positionX - ((event.clientX - drag.clientX) / drag.overflowX) * 100)),
+      y: drag.overflowY === 0
+        ? drag.positionY
+        : Math.max(0, Math.min(100, drag.positionY - ((event.clientY - drag.clientY) / drag.overflowY) * 100)),
+    })
+  }
+
+  function endImageDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (imageDragStart.current?.pointerId === event.pointerId) imageDragStart.current = null
+  }
+
+  function handleImageEditorKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const movement = event.shiftKey ? 10 : 2
+    const adjustments = {
+      ArrowLeft: { x: -movement, y: 0 },
+      ArrowRight: { x: movement, y: 0 },
+      ArrowUp: { x: 0, y: -movement },
+      ArrowDown: { x: 0, y: movement },
+    } as const
+    const adjustment = adjustments[event.key as keyof typeof adjustments]
+    if (!adjustment) return
+    event.preventDefault()
+    setEditorImagePosition((position) => ({
+      x: Math.max(0, Math.min(100, position.x + adjustment.x)),
+      y: Math.max(0, Math.min(100, position.y + adjustment.y)),
+    }))
+  }
+
   const imageEntries = [
     ...retainedImages.map((image, index) => ({
       key: image.path,
@@ -294,6 +399,13 @@ function VehicleForm({
       kind: 'selected' as const,
     })),
   ]
+  const primaryImage = imageEntries.find((image) => image.key === primaryImageKey)
+
+  useEffect(() => {
+    if (openTileImageEditorOnOpen && primaryImage?.url) {
+      setShowTileImageEditor(true)
+    }
+  }, [openTileImageEditorOnOpen, primaryImage?.url])
 
   function field(label: string, name: keyof VehicleDraft, type = 'text') {
     if (name === 'name' || !fieldSettings[name as VehicleFieldKey]?.show_in_form) return null
@@ -455,6 +567,15 @@ function VehicleForm({
                     />
                     <span>Primary</span>
                   </label>
+                  {primaryImageKey === image.key && image.url && (
+                    <button
+                      className="tile-image-edit-button"
+                      type="button"
+                      onClick={() => openTileImageEditor(image.key)}
+                    >
+                      Edit image
+                    </button>
+                  )}
                   <span className="image-preview-name" title={image.label}>{image.label}</span>
                 </div>
                 <button
@@ -470,6 +591,74 @@ function VehicleForm({
               </li>
             ))}
           </ul>
+        )}
+        {showTileImageEditor && primaryImage?.url && (
+          <dialog
+            ref={tileImageEditorDialogRef}
+            className="tile-image-editor-dialog"
+            aria-labelledby="tile-image-editor-title"
+            onCancel={(event) => {
+              event.preventDefault()
+              setShowTileImageEditor(false)
+            }}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setShowTileImageEditor(false)
+            }}
+          >
+            <section
+              className="tile-image-editor"
+              aria-describedby="tile-image-editor-help"
+            >
+              <header>
+                <div>
+                  <h3 id="tile-image-editor-title">Position tile photo</h3>
+                  <p id="tile-image-editor-help">Drag the photo until the part you want is in view.</p>
+                </div>
+                <button
+                  className="text-action"
+                  type="button"
+                  onClick={() => setEditorImagePosition({ x: 50, y: 50 })}
+                >
+                  Reset
+                </button>
+              </header>
+              <div
+                ref={tileImageEditorRef}
+                className="tile-image-editor-stage"
+                onPointerDown={startImageDrag}
+                onPointerMove={moveImage}
+                onPointerUp={endImageDrag}
+                onPointerCancel={endImageDrag}
+                onKeyDown={handleImageEditorKeyDown}
+                tabIndex={0}
+                aria-label="Photo positioning area. Drag to move the photo, or use the arrow keys."
+              >
+                <ImageWithShimmer
+                  className="tile-image-editor-image"
+                  src={primaryImage.url}
+                  alt={`Reposition ${primaryImage.label} for the vehicle tile`}
+                  objectPosition={`${editorImagePosition.x}% ${editorImagePosition.y}%`}
+                />
+                <span className="tile-image-editor-guide" aria-hidden="true" />
+              </div>
+              <p className="tile-image-editor-hint">The outlined area shows the tile photo crop.</p>
+              <footer>
+                <button className="text-action" type="button" onClick={() => setShowTileImageEditor(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="primary-action"
+                  type="button"
+                  onClick={() => {
+                    setTileImagePosition(editorImagePosition)
+                    setShowTileImageEditor(false)
+                  }}
+                >
+                  Use this crop
+                </button>
+              </footer>
+            </section>
+          </dialog>
         )}
       </div>}
 
